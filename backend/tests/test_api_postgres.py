@@ -327,3 +327,34 @@ def test_private_catalog_and_rate_limit(client, store, monkeypatch):
     )
     assert response.status_code == 429
     assert response.headers["Retry-After"] == "3600"
+
+
+def test_dataset_provenance_is_source_specific(client, store, monkeypatch, tmp_path):
+    from scripts import import_dataset as importer
+
+    monkeypatch.setattr(importer, "Session", store)
+    source = tmp_path / "north_shop.csv"
+    source.write_text(
+        "InvoiceNo,StockCode,Description,Quantity,InvoiceDate\n1,A,Apples,1,2025-01-02\n2,B,Bread,2,2025-02-03\n3,C,Cup,1,invalid\n"
+    )
+    identifier = importer.import_dataset(
+        source, name="North Shop Purchases", owner_id=uuid.UUID(int=1)
+    )
+    assert importer.import_dataset(source) == identifier
+    with store() as session:
+        row = session.get(Dataset, identifier)
+        assert row.name == "North Shop Purchases"
+        assert "UCI" not in row.source
+        assert row.source_url is None
+        assert row.transaction_start.isoformat() == "2025-01-02"
+        assert row.transaction_end.isoformat() == "2025-02-03"
+        assert row.summary["invalid_dates"] == 1
+        assert row.basket_count == 3
+        assert not row.is_shared
+    response = client.get(f"/api/v1/datasets/{identifier}/summary").json()
+    assert response["name"] == "North Shop Purchases"
+    assert response["transaction_start"] == "2025-01-02"
+    with pytest.raises(ValueError):
+        importer.import_dataset(source, name=" ")
+    with pytest.raises(ValueError):
+        importer.import_dataset(source, source_url="javascript:alert(1)")

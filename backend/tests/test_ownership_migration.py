@@ -25,7 +25,11 @@ def test_additive_migration_and_pooled_identity():
     with engine.connect() as conn:
         transaction = conn.begin()
         try:
-            for filename in ["001_initial.py", "002_account_ownership.py"]:
+            for filename in [
+                "001_initial.py",
+                "002_account_ownership.py",
+                "003_dataset_metadata.py",
+            ]:
                 spec = importlib.util.spec_from_file_location(
                     "migration_test", Path("migrations/versions") / filename
                 )

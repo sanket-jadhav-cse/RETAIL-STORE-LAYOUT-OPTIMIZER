@@ -348,3 +348,27 @@ it("handles a malformed cached run ID without making a request outside the run A
   await screen.findByRole("alert");
   expect(api.get.mock.calls.map(([path]) => path)).toEqual(["/datasets"]);
 });
+
+it("searches source-specific dataset names and selects the matching catalog entry", async () => {
+  api.get.mockResolvedValue({
+    data: [
+      { ...dataset, name: "UCI Online Retail Dataset" },
+      {
+        ...dataset,
+        dataset_id: "d2",
+        name: "North Shop Purchases",
+        basket_count: 7,
+      },
+    ],
+  });
+  render(<App />);
+  await screen.findByText("100");
+  fireEvent.click(screen.getByRole("button", { name: "Dataset", exact: true }));
+  fireEvent.change(screen.getByLabelText("Search datasets"), {
+    target: { value: "North" },
+  });
+  const option = screen.getByRole("button", { name: /North Shop Purchases/ });
+  fireEvent.click(option);
+  expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
+  expect(option).toHaveAttribute("aria-pressed", "true");
+});

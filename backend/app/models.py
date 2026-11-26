@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -31,6 +32,16 @@ class Dataset(Base):
     )
     owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
     is_shared: Mapped[bool] = mapped_column(default=False)
+    name: Mapped[str] = mapped_column(
+        String(200), default="Imported transaction dataset"
+    )
+    description: Mapped[str | None] = mapped_column(String(1000))
+    source_organization: Mapped[str | None] = mapped_column(String(200))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    doi: Mapped[str | None] = mapped_column(String(200))
+    transaction_start: Mapped[date | None] = mapped_column(Date)
+    transaction_end: Mapped[date | None] = mapped_column(Date)
+    processing_status: Mapped[str] = mapped_column(String(30), default="Ready")
     source: Mapped[str] = mapped_column(String)
     version: Mapped[str] = mapped_column(String)
     checksum: Mapped[str] = mapped_column(String, unique=True)

@@ -29,7 +29,15 @@ def preprocess(frame: pd.DataFrame):
         raise ValueError(
             "Required unique columns: InvoiceNo, StockCode, Description, Quantity"
         )
-    summary = {"original_records": len(frame), "excluded": {}}
+    summary = {"original_records": len(frame), "excluded": {}, "metadata_version": 1}
+    if "invoicedate" in frame:
+        dates = pd.to_datetime(frame["invoicedate"], errors="coerce", format="mixed")
+        valid = dates.dropna()
+        summary.update(
+            transaction_start=valid.min().date().isoformat() if len(valid) else None,
+            transaction_end=valid.max().date().isoformat() if len(valid) else None,
+            invalid_dates=int(dates.isna().sum()),
+        )
     frame["invoiceno"] = frame.invoiceno.map(identifier)
     frame["stockcode"] = frame.stockcode.map(identifier)
     frame["quantity"] = pd.to_numeric(frame.quantity, errors="coerce")

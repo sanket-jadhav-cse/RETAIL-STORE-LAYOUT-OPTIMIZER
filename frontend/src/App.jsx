@@ -365,7 +365,8 @@ export default function App() {
                 <option value="">Select a dataset</option>
                 {datasets.map((d) => (
                   <option key={d.dataset_id} value={d.dataset_id}>
-                    {d.version} · {d.basket_count.toLocaleString()} baskets
+                    {d.name || "Imported transaction dataset"} ·{" "}
+                    {d.basket_count.toLocaleString()} baskets
                   </option>
                 ))}
               </select>
@@ -451,7 +452,13 @@ export default function App() {
                 onNavigate={navigate}
               />
             )}
-            {screen === 1 && <DatasetScreen dataset={dataset} />}
+            {screen === 1 && (
+              <DatasetScreen
+                dataset={dataset}
+                datasets={datasets}
+                onSelect={chooseDataset}
+              />
+            )}
             {screen === 2 && (
               <MiningScreen
                 params={params}
