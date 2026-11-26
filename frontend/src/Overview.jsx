@@ -50,6 +50,17 @@ export default function Overview({
   pairsError,
   onNavigate,
 }) {
+  let connectionMessage =
+    "Complete a mining run to see your strongest product connections.";
+  if (run?.status === "Completed") {
+    connectionMessage =
+      pairs === null
+        ? "Loading product connections…"
+        : "No adjacency candidates are available for this run.";
+  }
+  if (pairsError)
+    connectionMessage =
+      "Product connections could not be loaded. Use Refresh to retry.";
   const metrics = [
     [
       "Eligible transactions",
@@ -102,6 +113,7 @@ export default function Overview({
             next product display with confidence.
           </p>
           <button
+            type="button"
             className="button banner-action"
             onClick={() => onNavigate(2)}
           >
@@ -158,7 +170,11 @@ export default function Overview({
           <SectionHeading
             title="Dataset quality"
             action={
-              <button className="text-button" onClick={() => onNavigate(1)}>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => onNavigate(1)}
+              >
                 View dataset
               </button>
             }
@@ -198,6 +214,7 @@ export default function Overview({
                 </span>
                 <div>
                   <button
+                    type="button"
                     className="text-button"
                     onClick={() => onNavigate(screen)}
                   >
@@ -215,7 +232,11 @@ export default function Overview({
           eyebrow="Selected run"
           title="Top product connections"
           action={
-            <button className="button secondary" onClick={() => onNavigate(5)}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => onNavigate(5)}
+            >
               View report
             </button>
           }
@@ -247,15 +268,7 @@ export default function Overview({
         ) : (
           <div className="inline-empty">
             <Icon name="network" />
-            <p>
-              {pairsError
-                ? "Product connections could not be loaded. Use Refresh to retry."
-                : run?.status === "Completed" && pairs === null
-                  ? "Loading product connections…"
-                  : run?.status === "Completed"
-                    ? "No adjacency candidates are available for this run."
-                    : "Complete a mining run to see your strongest product connections."}
-            </p>
+            <p>{connectionMessage}</p>
           </div>
         )}
       </section>

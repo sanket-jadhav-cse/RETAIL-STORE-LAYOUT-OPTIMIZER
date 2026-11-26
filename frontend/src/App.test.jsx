@@ -9,11 +9,13 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import App from "./App";
 import Graph from "./Graph";
 import { api } from "./api";
-vi.mock("./api", () => ({
+vi.mock("./api", async (importOriginal) => ({
+  ...(await importOriginal()),
   api: { get: vi.fn(), post: vi.fn() },
   errorMessage: () => "Service unavailable",
   downloadReport: vi.fn(),
 }));
+const RUN_ID = "00000000-0000-4000-8000-000000000001";
 const dataset = {
   dataset_id: "d1",
   version: "UCI 2011",
@@ -67,7 +69,7 @@ it("shows empty, loading and failure states", async () => {
 it("submits thresholds with a memory-only operator token", async () => {
   api.post.mockResolvedValue({
     data: {
-      run_id: "r1",
+      run_id: RUN_ID,
       dataset_id: "d1",
       status: "Completed",
       execution: {},
@@ -96,7 +98,7 @@ it("submits thresholds with a memory-only operator token", async () => {
   expect(window.localStorage.getItem("token")).toBeNull();
 });
 it("renders rules and report responses", async () => {
-  window.localStorage.setItem("retailRun", "r1");
+  window.localStorage.setItem("retailRun", RUN_ID);
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -130,11 +132,11 @@ it("renders rules and report responses", async () => {
                   review: "Review feasibility",
                   recommendations: { items: [], total: 0 },
                 }
-              : { run_id: "r1", status: "Completed", execution: {} },
+              : { run_id: RUN_ID, status: "Completed", execution: {} },
     }),
   );
   render(<App />);
-  await screen.findByText(/Run r1/);
+  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
   fireEvent.click(
     screen.getByRole("button", { name: "Association rules", exact: true }),
   );
@@ -170,7 +172,7 @@ it("inspects graph evidence and resets zoom", () => {
 });
 
 it("clears old run statistics when selecting another dataset", async () => {
-  window.localStorage.setItem("retailRun", "r1");
+  window.localStorage.setItem("retailRun", RUN_ID);
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -185,7 +187,7 @@ it("clears old run statistics when selecting another dataset", async () => {
               },
             ]
           : {
-              run_id: "r1",
+              run_id: RUN_ID,
               dataset_id: "d1",
               status: "Completed",
               execution: { rule_count: 52 },
@@ -240,7 +242,7 @@ it("supports Space on graph relationships and provides button alternatives to dr
 });
 
 it("keeps the current result table when its active navigation item is selected again", async () => {
-  window.localStorage.setItem("retailRun", "r1");
+  window.localStorage.setItem("retailRun", RUN_ID);
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -265,7 +267,7 @@ it("keeps the current result table when its active navigation item is selected a
             : path.endsWith("/adjacencies")
               ? { items: [], total: 0 }
               : {
-                  run_id: "r1",
+                  run_id: RUN_ID,
                   dataset_id: "d1",
                   status: "Completed",
                   execution: {},
@@ -273,7 +275,7 @@ it("keeps the current result table when its active navigation item is selected a
     }),
   );
   render(<App />);
-  await screen.findByText(/Run r1/);
+  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
   const button = screen.getByRole("button", {
     name: "Association rules",
     exact: true,
@@ -285,7 +287,7 @@ it("keeps the current result table when its active navigation item is selected a
 });
 
 it("debounces search and retains the table while the filtered request is pending", async () => {
-  window.localStorage.setItem("retailRun", "r1");
+  window.localStorage.setItem("retailRun", RUN_ID);
   let finishSearch;
   const rule = {
     rule_id: "1",
@@ -311,7 +313,7 @@ it("debounces search and retains the table while the filtered request is pending
             : path.endsWith("/adjacencies")
               ? { items: [], total: 0 }
               : {
-                  run_id: "r1",
+                  run_id: RUN_ID,
                   dataset_id: "d1",
                   status: "Completed",
                   execution: {},
@@ -319,7 +321,7 @@ it("debounces search and retains the table while the filtered request is pending
     });
   });
   render(<App />);
-  await screen.findByText(/Run r1/);
+  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
   fireEvent.click(
     screen.getByRole("button", { name: "Association rules", exact: true }),
   );
@@ -341,4 +343,11 @@ it("debounces search and retains the table while the filtered request is pending
   expect(screen.getByText("Apples")).toBeInTheDocument();
   finishSearch({ data: { total: 0, items: [] } });
   await screen.findByText("No qualifying results");
+});
+
+it("handles a malformed cached run ID without making a request outside the run API", async () => {
+  window.localStorage.setItem("retailRun", "../../datasets");
+  render(<App />);
+  await screen.findByRole("alert");
+  expect(api.get.mock.calls.map(([path]) => path)).toEqual(["/datasets"]);
 });
