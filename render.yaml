@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: retail-layout-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.lock && pip install --no-deps .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --no-access-log
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: DATABASE_URL
+        sync: false
+      - key: OPERATOR_TOKEN
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DATA_DIR
+        value: /var/data/retail
+      - key: MINING_MEMORY_MB
+        value: 2048
+      - key: OPENBLAS_NUM_THREADS
+        value: '1'
+# No paid plan/disk is provisioned. Attach persistent storage and choose sufficient
+# memory only after owner approval; see docs/deployment.md before deploying.

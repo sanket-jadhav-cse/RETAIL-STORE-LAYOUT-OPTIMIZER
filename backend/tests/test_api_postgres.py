@@ -1,0 +1,218 @@
+"""Real PostgreSQL integration in a uniquely named disposable test schema only."""
+
+import json
+import uuid
+
+import pytest
+from app import main, worker
+from app.config import settings
+from app.models import Adjacency, Base, Dataset, MiningRun, Product
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import sessionmaker
+
+
+@pytest.fixture(scope="module")
+def store():
+    engine = create_engine(
+        settings.migration_database_url or settings.database_url, hide_parameters=True
+    )
+    schema = "retail_test_" + uuid.uuid4().hex
+    try:
+        connection = engine.connect()
+    except Exception:
+        pytest.skip("PostgreSQL unavailable; integration not verified")
+    connection.execute(text(f"CREATE SCHEMA {schema}"))
+    connection.commit()
+    test_engine = engine.execution_options(schema_translate_map={"retail": schema})
+    Base.metadata.create_all(test_engine)
+    factory = sessionmaker(test_engine, expire_on_commit=False)
+    yield factory
+    # Only the uniquely generated schema above can be removed.
+    connection.execute(text(f"DROP SCHEMA {schema} CASCADE"))
+    connection.commit()
+    connection.close()
+
+
+@pytest.fixture
+def client(store, monkeypatch, tmp_path):
+    def db():
+        with store() as session:
+            yield session
+
+    main.app.dependency_overrides[main.db] = db
+    monkeypatch.setattr(main.runner, "ready", True)
+    monkeypatch.setattr(settings, "operator_token", "integration-test-token")
+    monkeypatch.setattr(settings, "data_dir", tmp_path)
+    monkeypatch.setattr(worker, "Session", store)
+    yield TestClient(main.app)
+    main.app.dependency_overrides.clear()
+
+
+def test_full_persisted_workflow(client, store):
+    dataset_id = uuid.uuid4()
+    checksum = uuid.uuid4().hex
+    baskets = [["A", "B"]] * 20 + [["A"]] * 10 + [["B"]] * 20 + [["C"]] * 50
+    (settings.data_dir / f"{checksum}.json").write_text(json.dumps(baskets))
+    with store.begin() as session:
+        session.add(
+            Dataset(
+                dataset_id=dataset_id,
+                source="SYNTHETIC TEST ONLY",
+                version="test",
+                checksum=checksum,
+                basket_count=100,
+                summary={},
+            )
+        )
+        session.flush()
+        session.add_all(
+            [
+                Product(dataset_id=dataset_id, product_code=c, description=c)
+                for c in "ABC"
+            ]
+        )
+    assert client.get("/api/v1/health").status_code == 200
+    assert client.get("/api/v1/datasets").json()[0]["dataset_id"] == str(dataset_id)
+    assert client.get(f"/api/v1/datasets/{dataset_id}/summary").status_code == 200
+    payload = dict(
+        dataset_id=str(dataset_id),
+        min_support=0.1,
+        min_confidence=0.4,
+        min_lift=1,
+        max_itemset_size=2,
+    )
+    headers = {"Authorization": "Bearer integration-test-token"}
+    assert client.post("/api/v1/runs", json=payload).status_code == 401
+    assert (
+        client.post(
+            "/api/v1/runs", json={**payload, "min_support": 0}, headers=headers
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/api/v1/runs", json={**payload, "min_lift": -1}, headers=headers
+        ).status_code
+        == 422
+    )
+    result = client.post("/api/v1/runs", json=payload, headers=headers)
+    assert result.status_code == 202, result.text
+    run_id = result.json()["run_id"]
+    assert result.json()["status"] == "Queued"
+    assert client.post("/api/v1/runs", json=payload, headers=headers).status_code == 409
+    assert client.get(f"/api/v1/runs/{run_id}/rules").status_code == 409
+    with store.begin() as session:
+        session.get(MiningRun, uuid.UUID(run_id)).status = "Running"
+    assert client.get(f"/api/v1/runs/{run_id}").json()["status"] == "Running"
+    worker.run_job(run_id)
+    assert client.get(f"/api/v1/runs/{run_id}").json()["status"] == "Completed"
+    rules = client.get(
+        f"/api/v1/runs/{run_id}/rules", params={"search": "A", "sort": "confidence"}
+    ).json()
+    assert rules["total"] == 2
+    assert rules["items"][0]["support"] == pytest.approx(0.2)
+    pairs = client.get(f"/api/v1/runs/{run_id}/adjacencies").json()
+    assert pairs["total"] == 1
+    assert pairs["items"][0]["confidence_a_b"] == pytest.approx(2 / 3)
+    assert pairs["items"][0]["confidence_b_a"] == pytest.approx(0.5)
+    assert (
+        client.get(f"/api/v1/runs/{run_id}/report").json()["recommendations"]["total"]
+        == 1
+    )
+    assert "confidence_a_b" in client.get(f"/api/v1/runs/{run_id}/report.csv").text
+    assert client.get(f"/api/v1/runs/{run_id}/itemsets").json()["total"] == 4
+    assert client.get(f"/api/v1/runs/{run_id}/rules?page_size=101").status_code == 422
+    assert client.get(f"/api/v1/runs/{uuid.uuid4()}").status_code == 404
+    assert client.get("/api/v1/datasets/not-a-uuid/summary").status_code == 422
+    with store() as session:
+        row = session.scalar(
+            select(Adjacency).where(Adjacency.run_id == uuid.UUID(run_id))
+        )
+        assert row.dataset_id == dataset_id
+        with pytest.raises(IntegrityError):
+            session.add(
+                Adjacency(
+                    run_id=row.run_id,
+                    dataset_id=dataset_id,
+                    product_a="B",
+                    product_b="A",
+                    rank=2,
+                    support=0.2,
+                    lift=1.6,
+                    confidence_a_b=0.5,
+                    confidence_b_a=0.6,
+                    rationale="invalid reverse",
+                )
+            )
+            session.commit()
+        session.rollback()
+
+
+def test_restart_and_single_worker(store, monkeypatch):
+    monkeypatch.setattr(worker, "engine", store.kw["bind"])
+    monkeypatch.setattr(worker, "Session", store)
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    with store.begin() as session:
+        dataset = Dataset(
+            source="SYNTHETIC RESTART TEST",
+            version="test",
+            checksum=uuid.uuid4().hex,
+            basket_count=1,
+            summary={},
+        )
+        session.add(dataset)
+        session.flush()
+        run = MiningRun(
+            dataset_id=dataset.dataset_id,
+            min_support=0.1,
+            min_confidence=0.5,
+            min_lift=1,
+            max_itemset_size=2,
+            status="Running",
+        )
+        session.add(run)
+        session.flush()
+        identifier = run.run_id
+    first = worker.Runner()
+    first.start()
+    try:
+        with store() as session:
+            assert session.get(MiningRun, identifier).status == "Failed"
+        with pytest.raises(RuntimeError):
+            worker.Runner().start()
+    finally:
+        first.close()
+    # Regression: returning a pooled connection must not retain a session advisory lock.
+    second = worker.Runner()
+    second.start()
+    second.close()
+
+
+def test_import_repairs_missing_artifact(client, store, monkeypatch, tmp_path):
+    from scripts import import_dataset as importer
+
+    monkeypatch.setattr(importer, "Session", store)
+    source = tmp_path / "synthetic.csv"
+    source.write_text(
+        "InvoiceNo,StockCode,Description,Quantity\n1,A,Apple,1\n1,B,Bread,1\n"
+    )
+    dataset_id = importer.import_dataset(source)
+    with store() as session:
+        dataset = session.get(Dataset, dataset_id)
+        artifact = settings.data_dir / f"{dataset.checksum}.json"
+        assert artifact.is_file()
+        artifact.unlink()
+    assert importer.import_dataset(source) == dataset_id
+    assert artifact.is_file()
+    assert importer.import_dataset(source) == dataset_id
+    with store() as session:
+        assert (
+            len(
+                session.scalars(
+                    select(Product).where(Product.dataset_id == dataset_id)
+                ).all()
+            )
+            == 2
+        )
