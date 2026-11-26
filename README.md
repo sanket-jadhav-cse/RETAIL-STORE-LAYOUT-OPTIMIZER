@@ -1,5 +1,5 @@
 # Retail Store Layout Optimizer (FP-Growth)
-Sanket Jadhav · 240410700193 · Semester 5
+Sanket Jadhav 
 
 Analyze invoice-level purchases and inspect explainable product-adjacency candidates. Six responsive screens cover data quality, mining, rules, an interactive conceptual graph and CSV evidence reports. Recommendations support merchandising judgment; no sales increase or optimal physical layout is claimed.
 
