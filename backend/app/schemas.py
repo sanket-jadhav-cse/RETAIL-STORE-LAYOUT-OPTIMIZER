@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -16,6 +16,14 @@ class RunInput(BaseModel):
 class DatasetOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     dataset_id: UUID
+    name: str
+    description: str | None
+    source_organization: str | None
+    source_url: str | None
+    doi: str | None
+    transaction_start: date | None
+    transaction_end: date | None
+    processing_status: str
     source: str
     version: str
     basket_count: int

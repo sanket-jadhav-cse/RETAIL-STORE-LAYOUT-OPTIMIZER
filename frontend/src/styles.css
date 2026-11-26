@@ -2244,3 +2244,19 @@ details[open] > summary > .icon {
   width: 20px;
   min-height: 20px;
 }
+.dataset-catalog {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.dataset-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  white-space: normal;
+}
+.dataset-option[aria-pressed="true"] {
+  border-color: var(--color-accent-text);
+}

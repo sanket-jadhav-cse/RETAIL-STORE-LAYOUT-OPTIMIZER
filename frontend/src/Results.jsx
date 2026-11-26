@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Icon from "./Icon";
 import Graph, { PairDetails, pct } from "./Graph";
 import { DatasetQuality } from "./Overview";
@@ -16,21 +17,64 @@ const qualityLabels = {
   invalid_quantity: "Invalid or non-positive quantities",
   exact_duplicates: "Exact duplicate records",
 };
-export function DatasetScreen({ dataset }) {
-  if (!dataset)
-    return (
-      <Notice>
-        Select an imported dataset to inspect its source and quality.
-      </Notice>
-    );
+export function DatasetScreen({ dataset, datasets = [], onSelect }) {
+  const [search, setSearch] = useState("");
+  const catalog = (
+    <section className="panel">
+      <SectionHeading title="Dataset catalog">
+        Choose a source for your analysis.
+      </SectionHeading>
+      <label>
+        Search datasets
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Dataset name or source…"
+        />
+      </label>
+      <div className="dataset-catalog">
+        {datasets
+          .filter((d) =>
+            `${d.name || ""} ${d.source}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
+          )
+          .map((d) => (
+            <button
+              type="button"
+              className="button secondary dataset-option"
+              key={d.dataset_id}
+              aria-pressed={d.dataset_id === dataset?.dataset_id}
+              onClick={() => onSelect?.(d.dataset_id)}
+            >
+              <strong>{d.name || "Imported transaction dataset"}</strong>
+              <span className="muted">
+                {d.transaction_start && d.transaction_end
+                  ? `${d.transaction_start} – ${d.transaction_end}`
+                  : "Dates unavailable"}{" "}
+                · {d.basket_count.toLocaleString()} baskets
+              </span>
+            </button>
+          ))}
+      </div>
+      {!datasets.some((d) =>
+        `${d.name || ""} ${d.source}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+      ) && <p className="muted">No matching datasets.</p>}
+    </section>
+  );
+  if (!dataset) return catalog;
   return (
     <>
+      {catalog}
       <section className="panel">
         <SectionHeading
           eyebrow="Source and provenance"
-          title="Online Retail dataset"
+          title={dataset.name || "Imported transaction dataset"}
         >
-          <span>{dataset.source}</span>
+          <span>{dataset.description || dataset.source}</span>
         </SectionHeading>
         <div className="source-metadata">
           <div>
@@ -45,6 +89,38 @@ export function DatasetScreen({ dataset }) {
                 : "Not available"}
             </strong>
           </div>
+          <div>
+            <span className="muted">Transaction period</span>
+            <strong>
+              {dataset.transaction_start && dataset.transaction_end
+                ? `${dataset.transaction_start} – ${dataset.transaction_end}`
+                : "Dates unavailable"}
+            </strong>
+          </div>
+          <div>
+            <span className="muted">Source organization</span>
+            <strong>{dataset.source_organization || "Not specified"}</strong>
+          </div>
+          <div>
+            <span className="muted">Processing status</span>
+            <strong>{dataset.processing_status || "Unavailable"}</strong>
+          </div>
+          {dataset.source_url?.startsWith("https://") && (
+            <div>
+              <span className="muted">Source</span>
+              <a href={dataset.source_url} target="_blank" rel="noreferrer">
+                Original dataset
+              </a>
+            </div>
+          )}
+          {dataset.doi?.startsWith("https://doi.org/") && (
+            <div>
+              <span className="muted">DOI</span>
+              <a href={dataset.doi} target="_blank" rel="noreferrer">
+                Dataset citation
+              </a>
+            </div>
+          )}
           <div>
             <span className="muted">Mining level</span>
             <strong>One basket per invoice</strong>
@@ -64,7 +140,16 @@ export function DatasetScreen({ dataset }) {
               </caption>
               <tbody>
                 {Object.entries(dataset.summary)
-                  .filter(([key]) => key !== "excluded" && key !== "policy")
+                  .filter(
+                    ([key]) =>
+                      ![
+                        "excluded",
+                        "policy",
+                        "metadata_version",
+                        "transaction_start",
+                        "transaction_end",
+                      ].includes(key),
+                  )
                   .map(([key, value]) => (
                     <tr key={key}>
                       <th scope="row">
@@ -427,7 +512,7 @@ export function ResultsScreen({
         <>
           <div className="report-overview">
             <div>
-              <h3>{result.dataset.source}</h3>
+              <h3>{result.dataset.name || result.dataset.source}</h3>
               <p className="muted">Dataset version {result.dataset.version}</p>
             </div>
             <button
