@@ -11,7 +11,7 @@ test("actual Supabase data across all six screens", async ({ page }) => {
   });
   await page.getByRole("button", { name: "Dataset", exact: true }).click();
   await expect(
-    page.getByRole("cell", { name: "541909", exact: true }),
+    page.getByRole("cell", { name: "541,909", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("button", { name: "Configure mining", exact: true })
@@ -30,7 +30,7 @@ test("actual Supabase data across all six screens", async ({ page }) => {
     .getByRole("button", { name: "Layout visualization", exact: true })
     .click();
   await expect(
-    page.getByRole("img", { name: "Product adjacency graph" }),
+    page.getByRole("group", { name: "Product adjacency graph" }),
   ).toBeVisible({ timeout: 30000 });
   await page
     .getByRole("button", {

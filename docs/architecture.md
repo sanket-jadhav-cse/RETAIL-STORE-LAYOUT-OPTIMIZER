@@ -106,6 +106,6 @@ Routes: health; datasets; dataset summary; create run; run status; rules; adjace
 - `worker.py`: single-process scheduling, restart recovery and atomic persistence.
 - `main.py`: HTTP routing, auth, pagination, serialization and CORS.
 - `scripts/`: owner-controlled acquisition, import, credentials, role setup and smoke verification.
-- Frontend `api.js`: Axios configuration and CSV download; `Graph.jsx`: graph/evidence components; `App.jsx`: screen navigation, API state, polling and forms.
+- Frontend `api.js`: Axios configuration and CSV download; `App.jsx`: navigation/API state and polling; `Overview.jsx`: dashboard/quality; `Results.jsx`: dataset/mining/results screens; `Graph.jsx`: graph/evidence; `ui.jsx`: shared controls; `theme.js`: appearance; `Icon.jsx`: SVG icon set. See ui-refresh.md for theme/accessibility verification.
 
 Private `retail` schema is outside default Supabase Data API schemas. Public and API roles get no grants; RLS policies grant the scoped runtime role. Do not add `retail` to exposed schemas. Runtime cannot create/drop tables or administer the database. Read endpoints expose product-level aggregates, never customer identifiers. Migration credentials are never needed by the web process on Render.

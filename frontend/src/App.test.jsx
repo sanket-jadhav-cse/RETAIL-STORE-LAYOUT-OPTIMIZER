@@ -200,3 +200,145 @@ it("clears old run statistics when selecting another dataset", async () => {
   expect(screen.queryByText("52")).not.toBeInTheDocument();
   expect(screen.getByText("200")).toBeInTheDocument();
 });
+
+it("toggles and persists the selected color theme", async () => {
+  render(<App />);
+  await screen.findByText("100");
+  fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
+  expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+  expect(window.localStorage.getItem("retailTheme")).toBe("dark");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Switch to light theme" }),
+  );
+  expect(window.localStorage.getItem("retailTheme")).toBe("light");
+});
+it("supports Space on graph relationships and provides button alternatives to dragging", () => {
+  render(
+    <Graph
+      pairs={[
+        {
+          rank: 1,
+          product_a: "A",
+          product_b: "B",
+          name_a: "Apples",
+          name_b: "Bread",
+          support: 0.2,
+          confidence_a_b: 0.6,
+          confidence_b_a: null,
+          lift: 1.5,
+          rationale: "Inspect this evidence",
+        },
+      ]}
+    />,
+  );
+  const edge = screen.getByRole("button", { name: "Apples with Bread" });
+  fireEvent.keyDown(edge, { key: " " });
+  expect(screen.getByText("Inspect this evidence")).toBeInTheDocument();
+  expect(edge).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Pan left" }));
+  expect(screen.getByLabelText("Inspect relationship")).toHaveValue("1");
+});
+
+it("keeps the current result table when its active navigation item is selected again", async () => {
+  window.localStorage.setItem("retailRun", "r1");
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path.endsWith("/rules")
+            ? {
+                total: 1,
+                items: [
+                  {
+                    rule_id: "1",
+                    antecedent: ["A"],
+                    consequent: ["B"],
+                    antecedent_names: ["Apples"],
+                    consequent_names: ["Bread"],
+                    support: 0.2,
+                    confidence: 0.5,
+                    lift: 1.5,
+                  },
+                ],
+              }
+            : path.endsWith("/adjacencies")
+              ? { items: [], total: 0 }
+              : {
+                  run_id: "r1",
+                  dataset_id: "d1",
+                  status: "Completed",
+                  execution: {},
+                },
+    }),
+  );
+  render(<App />);
+  await screen.findByText(/Run r1/);
+  const button = screen.getByRole("button", {
+    name: "Association rules",
+    exact: true,
+  });
+  fireEvent.click(button);
+  await screen.findByText("Apples");
+  fireEvent.click(button);
+  expect(screen.getByText("Apples")).toBeInTheDocument();
+});
+
+it("debounces search and retains the table while the filtered request is pending", async () => {
+  window.localStorage.setItem("retailRun", "r1");
+  let finishSearch;
+  const rule = {
+    rule_id: "1",
+    antecedent: ["A"],
+    consequent: ["B"],
+    antecedent_names: ["Apples"],
+    consequent_names: ["Bread"],
+    support: 0.2,
+    confidence: 0.5,
+    lift: 1.5,
+  };
+  api.get.mockImplementation((path, options) => {
+    if (path.endsWith("/rules") && options?.params?.search === "Bread")
+      return new Promise((resolve) => {
+        finishSearch = resolve;
+      });
+    return Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path.endsWith("/rules")
+            ? { total: 1, items: [rule] }
+            : path.endsWith("/adjacencies")
+              ? { items: [], total: 0 }
+              : {
+                  run_id: "r1",
+                  dataset_id: "d1",
+                  status: "Completed",
+                  execution: {},
+                },
+    });
+  });
+  render(<App />);
+  await screen.findByText(/Run r1/);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Association rules", exact: true }),
+  );
+  await screen.findByText("Apples");
+  fireEvent.change(screen.getByLabelText("Search products"), {
+    target: { value: "B" },
+  });
+  fireEvent.change(screen.getByLabelText("Search products"), {
+    target: { value: "Bread" },
+  });
+  expect(screen.getByText("Apples")).toBeInTheDocument();
+  await waitFor(() => expect(finishSearch).toBeTypeOf("function"));
+  expect(
+    api.get.mock.calls.filter(
+      ([path, options]) =>
+        path.endsWith("/rules") && options?.params?.search === "B",
+    ),
+  ).toHaveLength(0);
+  expect(screen.getByText("Apples")).toBeInTheDocument();
+  finishSearch({ data: { total: 0, items: [] } });
+  await screen.findByText("No qualifying results");
+});
