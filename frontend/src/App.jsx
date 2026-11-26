@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, errorMessage, downloadReport, runPath } from "./api";
 import Icon from "./Icon";
 import RunSelector from "./RunSelector";
+import Sidebar from "./Sidebar";
 import { Popover } from "./overlays";
 import Account, { UserMenu } from "./Account";
 import Overview from "./Overview";
@@ -10,26 +11,26 @@ import { Notice, Status } from "./ui";
 import { useTheme } from "./theme";
 
 const pages = [
-  "Dashboard",
-  "Dataset",
-  "Configure mining",
-  "Association rules",
-  "Layout visualization",
-  "Recommendation report",
+  "Overview",
+  "Datasets",
+  "Mining",
+  "Association Rules",
+  "Product Layout",
+  "Reports",
   "Account",
 ];
 const pageIcons = ["grid", "database", "sliders", "rules", "network", "report"];
 const headings = [
-  "Purchase patterns, made practical.",
-  "Know your source data.",
-  "Find meaningful relationships.",
-  "Inspect the evidence.",
-  "Explore product connections.",
-  "Recommendations with context.",
+  "Retail Store Layout Optimizer",
+  "Datasets",
+  "Mining",
+  "Association rules",
+  "Product layout",
+  "Reports",
   "Your account",
 ];
 const descriptions = [
-  "A clearer picture of what your customers buy together.",
+  "FP-Growth · Retail Analytics Dashboard",
   "Understand the source and quality behind every recommendation.",
   "Configure your analysis and uncover patterns in purchase history.",
   "Turn association metrics into informed merchandising decisions.",
@@ -63,6 +64,13 @@ export default function App() {
     }),
     [theme, toggleTheme] = useTheme(),
     [menuOpen, setMenuOpen] = useState(false),
+    [collapsed, updateCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem("retailSidebarCollapsed") === "true";
+      } catch {
+        return false;
+      }
+    }),
     [overviewPairs, setOverviewPairs] = useState(null),
     [overviewError, setOverviewError] = useState(false),
     [exporting, setExporting] = useState(false),
@@ -191,6 +199,14 @@ export default function App() {
       });
     return () => controller.abort();
   }, [runId, run?.status, refresh]);
+  function setCollapsed(value) {
+    updateCollapsed(value);
+    try {
+      localStorage.setItem("retailSidebarCollapsed", String(value));
+    } catch {
+      /* Optional preference. */
+    }
+  }
   function navigate(index) {
     if (index === screen) {
       setMenuOpen(false);
@@ -286,72 +302,30 @@ export default function App() {
     }
   }
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-sidebar-collapsed={collapsed}>
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <aside className="sidebar">
-        <div className="brand-row">
-          <div className="brand">
-            <span className="brand-mark">
-              <Icon name="grid" />
-            </span>
-            <div>
-              <span>RetailAtlas</span>
-              <small>Retail intelligence</small>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="icon-button menu-toggle"
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={menuOpen}
-            aria-controls="main-navigation"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <Icon name={menuOpen ? "close" : "menu"} />
-          </button>
-        </div>
-        <div className="sidebar-body" data-open={menuOpen}>
-          <p className="nav-label">Workspace</p>
-          <nav id="main-navigation" aria-label="Main navigation">
-            {pages.slice(0, 6).map((name, index) => (
-              <button
-                type="button"
-                key={name}
-                onClick={() => navigate(index)}
-                aria-current={screen === index ? "page" : undefined}
-                className={`nav-item ${screen === index ? "active" : ""}`}
-              >
-                <Icon name={pageIcons[index]} />
-                <span>{name}</span>
-                {screen === index && (
-                  <span className="nav-indicator" aria-hidden="true" />
-                )}
-              </button>
-            ))}
-          </nav>
-          <div className="sidebar-note">
-            <span className="sidebar-note-icon">
-              <Icon name="network" />
-            </span>
-            <h2>Built on evidence.</h2>
-            <p>Find useful connections in purchase history with FP-Growth.</p>
-            <span className="sidebar-tag">Conceptual adjacency</span>
-          </div>
-          <div className="sidebar-profile">
-            <span className="avatar" aria-hidden="true">
-              ●
-            </span>
-            <div>
-              <strong>Account workspace</strong>
-              <small>Retail analytics project</small>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        pages={pages}
+        icons={pageIcons}
+        screen={screen}
+        onNavigate={navigate}
+        collapsed={collapsed}
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+      />
       <div className="workspace">
         <div className="topbar">
+          <button
+            type="button"
+            className="icon-button desktop-sidebar-toggle"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            <Icon name="menu" />
+          </button>
           <div className="breadcrumb">
             <span>Workspace</span>
             <span aria-hidden="true">/</span>
@@ -529,7 +503,9 @@ export default function App() {
                 onSubmit={submit}
               />
             )}
-            {screen === 6 && <Account />}
+            {screen === 6 && (
+              <Account collapsed={collapsed} setCollapsed={setCollapsed} />
+            )}
             {screen >= 3 && screen <= 5 && (
               <ResultsScreen
                 screen={screen}
