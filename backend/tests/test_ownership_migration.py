@@ -29,6 +29,7 @@ def test_additive_migration_and_pooled_identity():
                 "001_initial.py",
                 "002_account_ownership.py",
                 "003_dataset_metadata.py",
+                "004_run_names.py",
             ]:
                 spec = importlib.util.spec_from_file_location(
                     "migration_test", Path("migrations/versions") / filename
@@ -44,6 +45,13 @@ def test_additive_migration_and_pooled_identity():
                         )
                     )
                 )
+                if filename.startswith("002"):
+                    conn.execute(
+                        text(
+                            f"INSERT INTO {schema}.runs (run_id,dataset_id,min_support,min_confidence,min_lift,status,created_at,execution,itemsets) VALUES (:id,:dataset,.02,.5,1,'Completed',now(),'{{}}','[]')"
+                        ),
+                        {"id": uuid.UUID(int=99), "dataset": uuid.UUID(int=10)},
+                    )
                 migration.upgrade()
                 if filename.startswith("001"):
                     conn.execute(
@@ -55,6 +63,14 @@ def test_additive_migration_and_pooled_identity():
             assert conn.execute(
                 text(f"SELECT owner_id, is_shared FROM {schema}.datasets")
             ).one() == (None, False)
+            legacy = conn.execute(
+                text(
+                    f"SELECT run_id,owner_id,name FROM {schema}.runs WHERE run_id=:id"
+                ),
+                {"id": uuid.UUID(int=99)},
+            ).one()
+            assert legacy.run_id == uuid.UUID(int=99) and legacy.owner_id is None
+            assert legacy.name.startswith("Market Basket Analysis")
             conn.execute(text(f"CREATE ROLE {role} NOLOGIN"))
             conn.execute(text(f"GRANT {role} TO CURRENT_USER"))
             conn.execute(text(f"GRANT USAGE ON SCHEMA {schema} TO {role}"))
@@ -73,7 +89,7 @@ def test_additive_migration_and_pooled_identity():
             for user in [1, 2]:
                 conn.execute(
                     text(
-                        f"INSERT INTO {schema}.runs (run_id,dataset_id,min_support,min_confidence,min_lift,status,created_at,execution,itemsets,owner_id) VALUES (:id,:dataset,.02,.5,1,'Completed',now(),'{{}}','[]',:owner)"
+                        f"INSERT INTO {schema}.runs (name,run_id,dataset_id,min_support,min_confidence,min_lift,status,created_at,execution,itemsets,owner_id) VALUES ('Test run',:id,:dataset,.02,.5,1,'Completed',now(),'{{}}','[]',:owner)"
                     ),
                     {
                         "id": uuid.UUID(int=100 + user),

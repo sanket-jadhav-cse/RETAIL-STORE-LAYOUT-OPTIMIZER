@@ -68,6 +68,9 @@ class MiningRun(Base):
         CheckConstraint("min_support > 0 AND min_support <= 1"),
         CheckConstraint("min_confidence > 0 AND min_confidence <= 1"),
         CheckConstraint("min_lift >= 0"),
+        CheckConstraint(
+            "char_length(trim(name)) BETWEEN 1 AND 120", name="run_name_length"
+        ),
         {"schema": "retail"},
     )
     run_id: Mapped[uuid.UUID] = mapped_column(
@@ -77,6 +80,7 @@ class MiningRun(Base):
         ForeignKey("retail.datasets.dataset_id"), index=True
     )
     owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
+    name: Mapped[str] = mapped_column(String(120), default="Market Basket Analysis")
     min_support: Mapped[float] = mapped_column(Float)
     min_confidence: Mapped[float] = mapped_column(Float)
     min_lift: Mapped[float] = mapped_column(Float)

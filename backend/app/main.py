@@ -2,20 +2,23 @@ import csv
 import io
 import secrets
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
 from app.auth import current_user
 from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
-from app.schemas import DatasetOut, RunInput, RunOut
+from app.schemas import DatasetOut, RunHistory, RunInput, RunName, RunOut
 from app.worker import LOCK_ID, Runner
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, select, text
+from pydantic import AwareDatetime
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import defer
 
 runner = Runner()
 
@@ -190,8 +193,85 @@ def create_run(body: RunInput, session: DB):
             "Hourly mining limit reached; try again later",
             headers={"Retry-After": "3600"},
         )
-    run = MiningRun(**body.model_dump(), owner_id=session.info["user_id"])
+    values = body.model_dump()
+    values["name"] = (
+        body.name
+        or (
+            f"Market Basket Analysis · {dataset.name[:40]} · "
+            f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC · s={body.min_support:g} c={body.min_confidence:g}"
+        )[:120]
+    )
+    run = MiningRun(**values, owner_id=session.info["user_id"])
     session.add(run)
+    session.commit()
+    return run
+
+
+@app.get("/api/v1/runs", response_model=RunHistory)
+def run_history(
+    session: DB,
+    page: PAGE = 1,
+    page_size: SIZE = 20,
+    search: Annotated[str, Query(max_length=120)] = "",
+    dataset_id: UUID | None = None,
+    status: Annotated[
+        str | None, Query(pattern="^(Queued|Running|Completed|Failed)$")
+    ] = None,
+    created_from: AwareDatetime | None = None,
+    created_before: AwareDatetime | None = None,
+):
+    if created_from and created_before and created_from >= created_before:
+        raise HTTPException(422, "Creation date range is invalid")
+    query = (
+        select(MiningRun, Dataset.name.label("dataset_name"))
+        .join(Dataset)
+        .where(
+            MiningRun.owner_id == session.info["user_id"],
+            Dataset.is_shared.is_(True) | (Dataset.owner_id == session.info["user_id"]),
+        )
+    )
+    if dataset_id:
+        query = query.where(MiningRun.dataset_id == dataset_id)
+    if status:
+        query = query.where(MiningRun.status == status)
+    if created_from:
+        query = query.where(MiningRun.created_at >= created_from)
+    if created_before:
+        query = query.where(MiningRun.created_at < created_before)
+    if search.strip():
+        term = search.strip()
+        filters = [
+            MiningRun.name.icontains(term, autoescape=True),
+            Dataset.name.icontains(term, autoescape=True),
+            cast(MiningRun.created_at, String).icontains(term, autoescape=True),
+        ]
+        try:
+            filters.append(MiningRun.run_id == UUID(term))
+        except ValueError:
+            pass
+        query = query.where(or_(*filters))
+    total = session.scalar(select(func.count()).select_from(query.subquery()))
+    rows = session.execute(
+        query.options(defer(MiningRun.itemsets))
+        .order_by(MiningRun.created_at.desc(), MiningRun.run_id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    return {
+        "items": [
+            {**RunOut.model_validate(run).model_dump(), "dataset_name": dataset_name}
+            for run, dataset_name in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@app.patch("/api/v1/runs/{id}", response_model=RunOut)
+def rename_run(id: UUID, body: RunName, session: DB):
+    run = get(session, MiningRun, id)
+    run.name = body.name
     session.commit()
     return run
 

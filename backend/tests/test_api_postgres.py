@@ -148,6 +148,7 @@ def test_full_persisted_workflow(client, store):
     assert result.status_code == 202, result.text
     run_id = result.json()["run_id"]
     assert result.json()["status"] == "Queued"
+    assert result.json()["name"].startswith("Market Basket Analysis")
     assert client.post("/api/v1/runs", json=payload, headers=headers).status_code == 409
     assert client.get(f"/api/v1/runs/{run_id}/rules").status_code == 409
     with store.begin() as session:
@@ -358,3 +359,106 @@ def test_dataset_provenance_is_source_specific(client, store, monkeypatch, tmp_p
         importer.import_dataset(source, name=" ")
     with pytest.raises(ValueError):
         importer.import_dataset(source, source_url="javascript:alert(1)")
+
+
+def test_named_history_search_pagination_and_rename(client, store):
+    with store.begin() as session:
+        dataset = Dataset(
+            name="History Catalog",
+            source="TEST",
+            version="v1",
+            checksum=uuid.uuid4().hex,
+            basket_count=1,
+            summary={},
+            is_shared=True,
+        )
+        session.add(dataset)
+        session.flush()
+        run_ids = []
+        for i in range(13):
+            run = MiningRun(
+                dataset_id=dataset.dataset_id,
+                owner_id=uuid.UUID(int=1 if i < 12 else 2),
+                name=f"Confidence analysis {i:02}",
+                min_support=0.02,
+                min_confidence=0.5,
+                min_lift=1,
+                status="Completed",
+                execution={"rule_count": i, "adjacency_count": i},
+                itemsets=[],
+            )
+            session.add(run)
+            session.flush()
+            run_ids.append(str(run.run_id))
+        dataset_id = str(dataset.dataset_id)
+    params = {"dataset_id": dataset_id, "page_size": 5}
+    first = client.get("/api/v1/runs", params=params)
+    assert first.status_code == 200, first.text
+    assert first.json()["total"] == 12
+    assert len(first.json()["items"]) == 5
+    assert first.json()["items"][0]["dataset_name"] == "History Catalog"
+    second = client.get("/api/v1/runs", params={**params, "page": 2}).json()
+    assert not {r["run_id"] for r in first.json()["items"]} & {
+        r["run_id"] for r in second["items"]
+    }
+    for query, expected in [
+        ("Confidence analysis 03", 1),
+        ("History Catalog", 12),
+        (run_ids[0], 1),
+        ("no-match", 0),
+        ("%", 0),
+    ]:
+        result = client.get("/api/v1/runs", params={**params, "search": query}).json()
+        assert result["total"] == expected
+    assert (
+        client.get("/api/v1/runs", params={**params, "status": "Running"}).json()[
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        client.get("/api/v1/runs", params={**params, "page": 99}).json()["items"] == []
+    )
+    assert client.get("/api/v1/runs?page_size=101").status_code == 422
+    assert client.get("/api/v1/runs?status=unknown").status_code == 422
+    assert (
+        client.get(
+            "/api/v1/runs?created_from=2026-01-01T00:00:00Z&created_before=2025-01-01T00:00:00Z"
+        ).status_code
+        == 422
+    )
+    assert (
+        client.get("/api/v1/runs?created_from=2026-01-01T00:00:00").status_code == 422
+    )
+    other = {"Authorization": "Bearer second-account"}
+    assert (
+        client.get(
+            "/api/v1/runs", params={**params, "search": run_ids[0]}, headers=other
+        ).json()["total"]
+        == 0
+    )
+    assert (
+        client.patch(
+            f"/api/v1/runs/{run_ids[0]}", json={"name": "Stolen"}, headers=other
+        ).status_code
+        == 404
+    )
+    for invalid in ["", " ", "x" * 121, "bad\nname", "<script>"]:
+        assert (
+            client.patch(
+                f"/api/v1/runs/{run_ids[0]}", json={"name": invalid}
+            ).status_code
+            == 422
+        )
+    response = client.patch(
+        f"/api/v1/runs/{run_ids[0]}",
+        json={"name": "  Baseline Market Basket Analysis  "},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "Baseline Market Basket Analysis"
+    assert (
+        client.get(
+            "/api/v1/runs", params={**params, "search": "Baseline Market"}
+        ).json()["total"]
+        == 1
+    )

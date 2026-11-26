@@ -2260,3 +2260,70 @@ details[open] > summary > .icon {
 .dataset-option[aria-pressed="true"] {
   border-color: var(--color-accent-text);
 }
+.run-selector {
+  width: min(540px, calc(100vw - 24px));
+}
+.history-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.history-filters label {
+  font-size: 0.75rem;
+}
+.run-list {
+  max-height: 340px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: 8px;
+}
+.run-option {
+  text-align: start;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+.run-option[aria-selected="true"],
+.run-option.keyboard-active {
+  border-color: var(--color-accent-text);
+}
+.run-option-footer {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+}
+.run-name-field {
+  margin-bottom: 24px;
+}
+.selected-run-name {
+  max-width: 65ch;
+  overflow-wrap: anywhere;
+}
+.skeleton-list {
+  display: grid;
+  gap: 8px;
+}
+.skeleton {
+  height: 66px;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-sm);
+}
+.run-history {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+@media (max-width: 500px) {
+  .history-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
