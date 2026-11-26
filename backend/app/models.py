@@ -29,6 +29,8 @@ class Dataset(Base):
     dataset_id: Mapped[uuid.UUID] = mapped_column(
         UUID, primary_key=True, default=uuid.uuid4
     )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
+    is_shared: Mapped[bool] = mapped_column(default=False)
     source: Mapped[str] = mapped_column(String)
     version: Mapped[str] = mapped_column(String)
     checksum: Mapped[str] = mapped_column(String, unique=True)
@@ -63,6 +65,7 @@ class MiningRun(Base):
     dataset_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("retail.datasets.dataset_id"), index=True
     )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
     min_support: Mapped[float] = mapped_column(Float)
     min_confidence: Mapped[float] = mapped_column(Float)
     min_lift: Mapped[float] = mapped_column(Float)

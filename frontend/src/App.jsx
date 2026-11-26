@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage, downloadReport, runPath } from "./api";
 import Icon from "./Icon";
+import Account, { UserMenu } from "./Account";
 import Overview from "./Overview";
 import { DatasetScreen, MiningScreen, ResultsScreen } from "./Results";
 import { Notice, Status } from "./ui";
@@ -13,6 +14,7 @@ const pages = [
   "Association rules",
   "Layout visualization",
   "Recommendation report",
+  "Account",
 ];
 const pageIcons = ["grid", "database", "sliders", "rules", "network", "report"];
 const headings = [
@@ -22,6 +24,7 @@ const headings = [
   "Inspect the evidence.",
   "Explore product connections.",
   "Recommendations with context.",
+  "Your account",
 ];
 const descriptions = [
   "A clearer picture of what your customers buy together.",
@@ -30,15 +33,14 @@ const descriptions = [
   "Turn association metrics into informed merchandising decisions.",
   "See the connections behind your next product display.",
   "A practical evidence trail for your merchandising review.",
+  "Manage your profile and account security.",
 ];
 export default function App() {
   const [screen, setScreen] = useState(0),
     [datasets, setDatasets] = useState([]),
     [datasetId, setDatasetId] = useState(""),
     [run, setRun] = useState(null),
-    [runId, setRunId] = useState(
-      () => window.localStorage.getItem("retailRun") || "",
-    ),
+    [runId, setRunId] = useState(""),
     [runInput, setRunInput] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -49,7 +51,6 @@ export default function App() {
     [searchQuery, setSearchQuery] = useState(""),
     [lift, setLift] = useState(0),
     [sort, setSort] = useState("lift"),
-    [token, setToken] = useState(""),
     [busy, setBusy] = useState(false),
     [params, setParams] = useState({
       min_support: 0.02,
@@ -109,7 +110,6 @@ export default function App() {
         if (active) {
           setRun(data);
           if (data.dataset_id) setDatasetId(data.dataset_id);
-          window.localStorage.setItem("retailRun", runId);
           if (["Queued", "Running"].includes(data.status))
             timer = setTimeout(poll, 1500);
         }
@@ -131,7 +131,7 @@ export default function App() {
     setPage(1);
   }, [screen, runId, searchQuery, lift, sort]);
   useEffect(() => {
-    if (run?.status !== "Completed" || screen < 3) return;
+    if (run?.status !== "Completed" || screen < 3 || screen > 5) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -201,7 +201,6 @@ export default function App() {
     setOverviewPairs(null);
     setOverviewError(false);
     setRunId(datasets.find((d) => d.dataset_id === id)?.latest_run_id || "");
-    window.localStorage.removeItem("retailRun");
     setError("");
   }
   async function submit(e) {
@@ -211,21 +210,16 @@ export default function App() {
     setError("");
     setFeedback("");
     try {
-      const { data } = await api.post(
-        "/runs",
-        {
-          ...params,
-          max_itemset_size:
-            params.max_itemset_size === ""
-              ? null
-              : Number(params.max_itemset_size),
-          dataset_id: datasetId,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const { data } = await api.post("/runs", {
+        ...params,
+        max_itemset_size:
+          params.max_itemset_size === ""
+            ? null
+            : Number(params.max_itemset_size),
+        dataset_id: datasetId,
+      });
       setRun(data);
       setRunId(data.run_id);
-      setToken("");
       setFeedback("Mining run submitted. Its status will update here.");
     } catch (e) {
       setError(errorMessage(e));
@@ -276,7 +270,7 @@ export default function App() {
         <div className="sidebar-body" data-open={menuOpen}>
           <p className="nav-label">Workspace</p>
           <nav id="main-navigation" aria-label="Main navigation">
-            {pages.map((name, index) => (
+            {pages.slice(0, 6).map((name, index) => (
               <button
                 type="button"
                 key={name}
@@ -301,9 +295,11 @@ export default function App() {
             <span className="sidebar-tag">Conceptual adjacency</span>
           </div>
           <div className="sidebar-profile">
-            <span className="avatar">SJ</span>
+            <span className="avatar" aria-hidden="true">
+              ●
+            </span>
             <div>
-              <strong>Sanket Jadhav</strong>
+              <strong>Account workspace</strong>
               <small>Retail analytics project</small>
             </div>
           </div>
@@ -317,6 +313,7 @@ export default function App() {
             <strong>{pages[screen]}</strong>
           </div>
           <div className="topbar-actions">
+            <UserMenu onAccount={() => navigate(6)} />
             <span className="engine-label">
               <Icon name="layers" />
               FP-Growth
@@ -330,9 +327,6 @@ export default function App() {
             >
               <Icon name={theme === "light" ? "moon" : "sun"} />
             </button>
-            <span className="topbar-avatar" aria-label="Sanket Jadhav">
-              SJ
-            </span>
           </div>
         </div>
         <main id="main-content" className="main-content">
@@ -462,15 +456,14 @@ export default function App() {
               <MiningScreen
                 params={params}
                 setParams={setParams}
-                token={token}
-                setToken={setToken}
                 busy={busy}
                 datasetId={datasetId}
                 run={run}
                 onSubmit={submit}
               />
             )}
-            {screen >= 3 && (
+            {screen === 6 && <Account />}
+            {screen >= 3 && screen <= 5 && (
               <ResultsScreen
                 screen={screen}
                 runId={runId}

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID
 
+from app.auth import current_user
 from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
 from app.schemas import DatasetOut, RunInput, RunOut
@@ -31,7 +32,7 @@ app = FastAPI(title="Retail Store Layout Optimizer", version="1.0.0", lifespan=l
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins.split(","),
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -43,8 +44,8 @@ async def database_error(request: Request, exc):
     )
 
 
-def db():
-    with Session() as session:
+def db(user=Depends(current_user)):
+    with Session(info={"user_id": str(user.user_id), "identity": user}) as session:
         yield session
 
 
@@ -54,7 +55,17 @@ SIZE = Annotated[int, Query(ge=1, le=100)]
 
 
 def get(session, model, identifier):
-    value = session.get(model, identifier)
+    query = select(model)
+    if model is MiningRun:
+        query = query.where(
+            model.owner_id == session.info["user_id"], model.run_id == identifier
+        )
+    elif model is Dataset:
+        query = query.where(
+            model.dataset_id == identifier,
+            (model.is_shared.is_(True) | (model.owner_id == session.info["user_id"])),
+        )
+    value = session.scalar(query)
     if value is None:
         raise HTTPException(404, "Resource not found")
     return value
@@ -75,6 +86,10 @@ def operator(authorization: Annotated[str | None, Header()] = None):
         raise HTTPException(
             401, "Operator token required", headers={"WWW-Authenticate": "Bearer"}
         )
+
+
+def mining_busy(session):
+    return session.scalar(select(func.retail.mining_busy()))
 
 
 def names(session, dataset_id):
@@ -109,20 +124,29 @@ def pair_dict(row, labels):
 
 
 @app.get("/api/v1/health")
-def health(session: DB):
-    session.execute(text("SELECT 1"))
+def health():
+    with Session() as session:
+        session.execute(text("SELECT 1"))
     return {"status": "ok", "mining_available": runner.ready}
 
 
 @app.get("/api/v1/datasets", response_model=list[DatasetOut])
 def datasets(session: DB):
     rows = session.scalars(
-        select(Dataset).order_by(Dataset.imported_at.desc()).limit(100)
+        select(Dataset)
+        .where(
+            Dataset.is_shared.is_(True) | (Dataset.owner_id == session.info["user_id"])
+        )
+        .order_by(Dataset.imported_at.desc())
+        .limit(100)
     ).all()
     for row in rows:
         row.latest_run_id = session.scalar(
             select(MiningRun.run_id)
-            .where(MiningRun.dataset_id == row.dataset_id)
+            .where(
+                MiningRun.dataset_id == row.dataset_id,
+                MiningRun.owner_id == session.info["user_id"],
+            )
             .order_by(MiningRun.created_at.desc())
             .limit(1)
         )
@@ -138,7 +162,6 @@ def summary(id: UUID, session: DB):
     "/api/v1/runs",
     response_model=RunOut,
     status_code=202,
-    dependencies=[Depends(operator)],
 )
 def create_run(body: RunInput, session: DB):
     if not runner.ready:
@@ -150,14 +173,24 @@ def create_run(body: RunInput, session: DB):
         )
     # Transaction advisory lock serializes simultaneous submissions across connections.
     session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": LOCK_ID + 1})
-    active = session.scalar(
-        select(MiningRun.run_id)
-        .where(MiningRun.status.in_(["Queued", "Running"]))
-        .limit(1)
-    )
+    active = mining_busy(session)
     if active:
         raise HTTPException(409, "A mining run is already queued or running")
-    run = MiningRun(**body.model_dump())
+    recent = session.scalar(
+        select(func.count())
+        .select_from(MiningRun)
+        .where(
+            MiningRun.owner_id == session.info["user_id"],
+            MiningRun.created_at >= func.now() - text("INTERVAL '1 hour'"),
+        )
+    )
+    if recent >= settings.mining_runs_per_hour:
+        raise HTTPException(
+            429,
+            "Hourly mining limit reached; try again later",
+            headers={"Retry-After": "3600"},
+        )
+    run = MiningRun(**body.model_dump(), owner_id=session.info["user_id"])
     session.add(run)
     session.commit()
     return run
@@ -294,3 +327,15 @@ def report_csv(id: UUID, session: DB):
             "Content-Disposition": f'attachment; filename="recommendations-{id}.csv"'
         },
     )
+
+
+@app.get("/api/v1/account")
+def account(user=Depends(current_user)):
+    profile = user.profile
+    return {
+        "user_id": user.user_id,
+        "email": user.email,
+        "display_name": profile.get("user_metadata", {}).get("display_name", ""),
+        "created_at": profile.get("created_at"),
+        "email_verified": bool(profile.get("email_confirmed_at")),
+    }
