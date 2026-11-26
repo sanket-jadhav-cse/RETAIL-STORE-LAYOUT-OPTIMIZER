@@ -161,6 +161,10 @@ export function MiningScreen({
     ],
   ];
   const active = ["Queued", "Running"].includes(run?.status);
+  let submissionHelp = "Select a dataset to begin.";
+  if (datasetId)
+    submissionHelp = "Uses every eligible basket in the selected dataset.";
+  if (active) submissionHelp = "A run is already in progress.";
   return (
     <div className="mining-layout">
       <section className="panel">
@@ -175,7 +179,7 @@ export function MiningScreen({
           <div className="form-grid">
             {fields.map(([key, title, min, max, step, help]) => (
               <label key={key} htmlFor={key}>
-                {title}
+                <span>{title}</span>
                 <input
                   id={key}
                   aria-label={title}
@@ -212,7 +216,7 @@ export function MiningScreen({
             </div>
           </div>
           <label className="token-field" htmlFor="operator-token">
-            Operator token
+            <span>Operator token</span>
             <input
               id="operator-token"
               aria-label="Operator token"
@@ -229,14 +233,9 @@ export function MiningScreen({
             </span>
           </label>
           <div className="form-actions">
-            <span className="muted">
-              {active
-                ? "A run is already in progress."
-                : datasetId
-                  ? "Uses every eligible basket in the selected dataset."
-                  : "Select a dataset to begin."}
-            </span>
+            <span className="muted">{submissionHelp}</span>
             <button
+              type="submit"
               className="button primary"
               disabled={busy || !datasetId || active}
             >
@@ -286,6 +285,26 @@ export function MiningScreen({
     </div>
   );
 }
+const resultViews = {
+  3: {
+    eyebrow: "Directional relationships",
+    title: "Association rule explorer",
+    description:
+      "Search product names or codes, then compare the metrics behind each rule.",
+  },
+  4: {
+    eyebrow: "Conceptual product adjacency",
+    title: "Product relationship map",
+    description:
+      "Select a connection to inspect why two products may belong nearby.",
+  },
+  5: {
+    eyebrow: "Evidence-based decision support",
+    title: "Recommendation evidence",
+    description:
+      "Ranked product pairs, their supporting metrics, and practical review guidance.",
+  },
+};
 export function ResultsScreen({
   screen,
   runId,
@@ -303,6 +322,7 @@ export function ResultsScreen({
   onExport,
   exporting,
 }) {
+  const view = resultViews[screen];
   const rows = screen === 5 ? result?.recommendations?.items : result?.items;
   const total = screen === 5 ? result?.recommendations?.total : result?.total;
   if (run?.status !== "Completed")
@@ -317,20 +337,8 @@ export function ResultsScreen({
   return (
     <section className="panel results-panel" aria-busy={loading}>
       <SectionHeading
-        eyebrow={
-          screen === 3
-            ? "Directional relationships"
-            : screen === 4
-              ? "Conceptual product adjacency"
-              : "Evidence-based decision support"
-        }
-        title={
-          screen === 3
-            ? "Association rule explorer"
-            : screen === 4
-              ? "Product relationship map"
-              : "Recommendation evidence"
-        }
+        eyebrow={view.eyebrow}
+        title={view.title}
         action={
           total != null && (
             <span className="count-badge">
@@ -339,18 +347,14 @@ export function ResultsScreen({
           )
         }
       >
-        {screen === 3
-          ? "Search product names or codes, then compare the metrics behind each rule."
-          : screen === 4
-            ? "Select a connection to inspect why two products may belong nearby."
-            : "Ranked product pairs, their supporting metrics, and practical review guidance."}
+        {view.description}
       </SectionHeading>
       {screen < 5 && (
         <div className="results-toolbar">
           {screen === 3 && (
             <>
               <label className="search-field">
-                Search products
+                <span>Search products</span>
                 <div className="input-with-icon">
                   <Icon name="search" />
                   <input
@@ -362,7 +366,7 @@ export function ResultsScreen({
                 </div>
               </label>
               <label>
-                Sort by
+                <span>Sort by</span>
                 <select value={sort} onChange={(e) => setSort(e.target.value)}>
                   {["lift", "support", "confidence"].map((s) => (
                     <option key={s} value={s}>
@@ -374,7 +378,7 @@ export function ResultsScreen({
             </>
           )}
           <label>
-            Minimum lift
+            <span>Minimum lift</span>
             <input
               type="number"
               min="0"
@@ -389,6 +393,7 @@ export function ResultsScreen({
       {screen === 3 && rows?.length > 0 && (
         <div
           className="table-scroll"
+          role="region"
           tabIndex="0"
           aria-label="Scrollable association rules"
         >
@@ -452,6 +457,7 @@ export function ResultsScreen({
               <p className="muted">Dataset version {result.dataset.version}</p>
             </div>
             <button
+              type="button"
               className="button primary"
               onClick={onExport}
               disabled={exporting}

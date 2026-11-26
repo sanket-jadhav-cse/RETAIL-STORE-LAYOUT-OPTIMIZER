@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, errorMessage, downloadReport } from "./api";
+import { api, errorMessage, downloadReport, runPath } from "./api";
 import Icon from "./Icon";
 import Overview from "./Overview";
 import { DatasetScreen, MiningScreen, ResultsScreen } from "./Results";
@@ -103,21 +103,20 @@ export default function App() {
     if (!runId) return;
     let active = true,
       timer;
-    const poll = () =>
-      api
-        .get(`/runs/${runId}`)
-        .then(({ data }) => {
-          if (active) {
-            setRun(data);
-            if (data.dataset_id) setDatasetId(data.dataset_id);
-            window.localStorage.setItem("retailRun", runId);
-            if (["Queued", "Running"].includes(data.status))
-              timer = setTimeout(poll, 1500);
-          }
-        })
-        .catch((e) => {
-          if (active) setError(errorMessage(e));
-        });
+    const poll = async () => {
+      try {
+        const { data } = await api.get(runPath(runId));
+        if (active) {
+          setRun(data);
+          if (data.dataset_id) setDatasetId(data.dataset_id);
+          window.localStorage.setItem("retailRun", runId);
+          if (["Queued", "Running"].includes(data.status))
+            timer = setTimeout(poll, 1500);
+        }
+      } catch (error) {
+        if (active) setError(errorMessage(error));
+      }
+    };
     poll();
     return () => {
       active = false;
@@ -139,7 +138,7 @@ export default function App() {
     const path =
       screen === 3 ? "rules" : screen === 4 ? "adjacencies" : "report";
     api
-      .get(`/runs/${runId}/${path}`, {
+      .get(runPath(runId, path), {
         params: {
           page,
           page_size: 25,
@@ -166,7 +165,7 @@ export default function App() {
     if (run?.status !== "Completed") return;
     const controller = new AbortController();
     api
-      .get(`/runs/${runId}/adjacencies`, {
+      .get(runPath(runId, "adjacencies"), {
         params: { page: 1, page_size: 3 },
         signal: controller.signal,
       })
@@ -264,6 +263,7 @@ export default function App() {
             </div>
           </div>
           <button
+            type="button"
             className="icon-button menu-toggle"
             aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen}
@@ -278,6 +278,7 @@ export default function App() {
           <nav id="main-navigation" aria-label="Main navigation">
             {pages.map((name, index) => (
               <button
+                type="button"
                 key={name}
                 onClick={() => navigate(index)}
                 aria-current={screen === index ? "page" : undefined}
@@ -321,6 +322,7 @@ export default function App() {
               FP-Growth
             </span>
             <button
+              type="button"
               className="icon-button"
               aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
               title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
@@ -343,6 +345,7 @@ export default function App() {
               <p>{descriptions[screen]}</p>
             </div>
             <button
+              type="button"
               className="button secondary refresh-button"
               onClick={() => {
                 setError("");
@@ -396,22 +399,24 @@ export default function App() {
                     onChange={(e) => setRunInput(e.target.value)}
                   />
                 </label>
-                <button className="button secondary">Load run</button>
+                <button type="submit" className="button secondary">
+                  Load run
+                </button>
               </form>
             </details>
           </section>
-          <div className="announcement sr-only" role="status">
+          <output className="announcement sr-only">
             {feedback || (run ? `Mining status: ${run.status}` : "")}
-          </div>
+          </output>
           {error && (
             <Notice kind="error" title="We couldn’t complete that request">
               {error} Use Refresh to retry, or check your connection and inputs.
             </Notice>
           )}
           {feedback && <Notice kind="success">{feedback}</Notice>}
-          <div className="loading-slot" role="status">
+          <output className="loading-slot">
             {loading ? "Loading data…" : ""}
-          </div>
+          </output>
           {!loading && !datasets.length && (
             <Notice title="Start with your transaction data">
               No dataset imported. Use the dataset setup instructions to import

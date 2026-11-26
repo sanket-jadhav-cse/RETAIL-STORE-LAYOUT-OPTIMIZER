@@ -64,16 +64,8 @@ const paths = {
       <path d="M12 11v6m0-10v.1" />
     </>
   ),
-  box: (
-    <>
-      <path d="m12 3 9 5-9 5-9-5 9-5ZM3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5" />
-    </>
-  ),
-  layers: (
-    <>
-      <path d="m12 3 10 5-10 5L2 8l10-5ZM2 12l10 5 10-5M2 16l10 5 10-5" />
-    </>
-  ),
+  box: <path d="m12 3 9 5-9 5-9-5 9-5ZM3 8v9l9 5 9-5V8M12 13v9M7.5 5.5l9 5" />,
+  layers: <path d="m12 3 10 5-10 5L2 8l10-5ZM2 12l10 5 10-5M2 16l10 5 10-5" />,
   activity: <path d="M2 12h5l3-9 4 18 3-9h5" />,
   search: (
     <>
@@ -81,11 +73,7 @@ const paths = {
       <path d="m16 16 5 5" />
     </>
   ),
-  download: (
-    <>
-      <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />
-    </>
-  ),
+  download: <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />,
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />

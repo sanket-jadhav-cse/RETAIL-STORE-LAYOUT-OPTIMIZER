@@ -6,13 +6,13 @@
     <script>
       try {
         const stored = localStorage.getItem("retailTheme");
-        document.documentElement.dataset.theme = ["light", "dark"].includes(
-          stored,
-        )
-          ? stored
-          : matchMedia("(prefers-color-scheme: dark)").matches
+        let theme = stored;
+        if (!["light", "dark"].includes(theme)) {
+          theme = matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
             : "light";
+        }
+        document.documentElement.dataset.theme = theme;
       } catch {
         document.documentElement.dataset.theme = "light";
       }

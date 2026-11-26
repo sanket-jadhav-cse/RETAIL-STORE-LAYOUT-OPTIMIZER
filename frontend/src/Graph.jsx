@@ -33,6 +33,17 @@ export function PairDetails({ pair }) {
     </div>
   );
 }
+function activate(event, action) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    action();
+  }
+}
+function labelAnchor(cosine) {
+  if (cosine > 0.2) return "start";
+  if (cosine < -0.2) return "end";
+  return "middle";
+}
 export default function Graph({ pairs }) {
   const [selected, setSelected] = useState(null),
     [product, setProduct] = useState(""),
@@ -59,23 +70,12 @@ export default function Graph({ pairs }) {
           y: 300 + 225 * Math.sin((i / all.length) * 2 * Math.PI),
           labelX: 400 + 300 * Math.cos((i / all.length) * 2 * Math.PI),
           labelY: 304 + 255 * Math.sin((i / all.length) * 2 * Math.PI),
-          anchor:
-            Math.cos((i / all.length) * 2 * Math.PI) > 0.2
-              ? "start"
-              : Math.cos((i / all.length) * 2 * Math.PI) < -0.2
-                ? "end"
-                : "middle",
+          anchor: labelAnchor(Math.cos((i / all.length) * 2 * Math.PI)),
         }),
       ),
     [pairs],
   );
   const positions = Object.fromEntries(nodes.map((node) => [node.id, node]));
-  function activate(e, fn) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fn();
-    }
-  }
   function reset() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -86,7 +86,7 @@ export default function Graph({ pairs }) {
     <>
       <div className="graph-controls">
         <label>
-          Focus product
+          <span>Focus product</span>
           <select value={product} onChange={(e) => setProduct(e.target.value)}>
             <option value="">All products</option>
             {nodes.map((node) => (
@@ -108,7 +108,7 @@ export default function Graph({ pairs }) {
             onChange={(e) => setZoom(Number(e.target.value))}
           />
         </label>
-        <button className="button secondary" onClick={reset}>
+        <button type="button" className="button secondary" onClick={reset}>
           <Icon name="refresh" />
           Reset view
         </button>
@@ -120,10 +120,10 @@ export default function Graph({ pairs }) {
       </p>
       <div className="graph-layout">
         <div>
-          <div className="graph-canvas">
+          <fieldset className="graph-canvas">
+            <legend className="sr-only">Product adjacency graph</legend>
             <svg
-              role="group"
-              aria-label="Product adjacency graph"
+              role="presentation"
               viewBox="0 0 800 600"
               className="graph-svg"
               onPointerDown={(e) => {
@@ -230,15 +230,15 @@ export default function Graph({ pairs }) {
             </svg>
             <div className="graph-legend">
               <span>
-                <i className="legend-point" />
-                Product
+                <span className="legend-point" aria-hidden="true" />
+                <span>Product</span>
               </span>
               <span>
-                <i className="legend-line" />
-                Recommended relationship
+                <span className="legend-line" aria-hidden="true" />
+                <span>Recommended relationship</span>
               </span>
             </div>
-          </div>
+          </fieldset>
           <div className="graph-pan">
             <span>Pan view</span>
             {[
@@ -248,6 +248,7 @@ export default function Graph({ pairs }) {
               ["right", -40, 0, "→"],
             ].map(([direction, x, y, symbol]) => (
               <button
+                type="button"
                 className="icon-button"
                 key={direction}
                 aria-label={`Pan ${direction}`}
@@ -262,7 +263,7 @@ export default function Graph({ pairs }) {
         </div>
         <aside className="graph-selection">
           <label>
-            Inspect relationship
+            <span>Inspect relationship</span>
             <select
               value={selected?.rank ?? ""}
               onChange={(e) =>

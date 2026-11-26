@@ -17,7 +17,7 @@ export function useTheme() {
     const root = document.documentElement;
     root.classList.add("theme-switching");
     root.dataset.theme = next;
-    void root.offsetHeight;
+    root.getBoundingClientRect();
     setTheme(next);
     try {
       localStorage.setItem("retailTheme", next);

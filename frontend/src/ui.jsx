@@ -2,31 +2,24 @@ import Icon from "./Icon";
 export function Status({ status }) {
   return (
     <span className={`status status-${(status || "idle").toLowerCase()}`}>
-      <Icon
-        name={
-          status === "Completed"
-            ? "check"
-            : status === "Failed"
-              ? "close"
-              : "clock"
-        }
-      />
+      <Icon name={{ Completed: "check", Failed: "close" }[status] || "clock"} />
       {status || "No run selected"}
     </span>
   );
 }
 export function Notice({ children, kind = "info", title }) {
+  const Element = kind === "error" ? "div" : "output";
   return (
-    <div
+    <Element
       className={`notice notice-${kind}`}
-      role={kind === "error" ? "alert" : "status"}
+      role={kind === "error" ? "alert" : undefined}
     >
       <Icon name="info" />
-      <div>
+      <span className="notice-content">
         {title && <strong>{title}</strong>}
-        <p>{children}</p>
-      </div>
-    </div>
+        <span>{children}</span>
+      </span>
+    </Element>
   );
 }
 export function SectionHeading({ eyebrow, title, children, action }) {
@@ -50,6 +43,7 @@ export function Pager({ page, setPage, total, size = 25 }) {
       </span>
       <div className="button-group">
         <button
+          type="button"
           className="button secondary"
           disabled={page === 1}
           onClick={() => setPage(page - 1)}
@@ -57,6 +51,7 @@ export function Pager({ page, setPage, total, size = 25 }) {
           Previous
         </button>
         <button
+          type="button"
           className="button secondary"
           disabled={page * size >= total}
           onClick={() => setPage(page + 1)}
