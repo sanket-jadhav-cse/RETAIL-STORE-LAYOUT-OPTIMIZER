@@ -1,7 +1,7 @@
 # Retail Store Layout Optimizer (FP-Growth)
 Sanket Jadhav 
 
-Analyze invoice-level purchases and inspect explainable product-adjacency candidates. Six responsive screens cover data quality, mining, rules, an interactive conceptual graph and CSV evidence reports. Recommendations support merchandising judgment; no sales increase or optimal physical layout is claimed.
+Analyze invoice-level purchases and inspect explainable product-adjacency candidates. Six responsive screens cover data quality, mining, rules, an interactive conceptual graph and CSV evidence reports, with persistent light/dark themes and keyboard-accessible controls. Recommendations support merchandising judgment; no sales increase or optimal physical layout is claimed.
 
 React/JavaScript/Vite/Tailwind/Axios frontend → FastAPI/Pydantic backend → Supabase PostgreSQL/SQLAlchemy/Alembic. pandas/NumPy/mlxtend perform CPU-based FP-Growth. A single bounded child process executes mining.
 
@@ -57,3 +57,5 @@ PostgreSQL tests create a unique disposable `retail_test_*` schema using `MIGRAT
 Vercel: `frontend/` root, `npm ci`, `npm run build`, `dist/`; set `VITE_API_BASE_URL` to the HTTPS backend origin. Render: `backend/` root and single-worker Uvicorn; configure runtime database URL, operator token, exact frontend CORS origin and persistent basket storage. Supabase uses SSL and the isolated `retail` schema. See [deployment instructions](docs/deployment.md) before provisioning: measured full-data peak RSS was approximately 1.50 GiB, exceeding 512 MiB hosting. No paid plan has been selected and nothing is publicly deployed.
 
 [Architecture](docs/architecture.md) · [wireframes](docs/wireframes.md) · [evaluation](docs/evaluation.md) · [final report](docs/final-report.md) · [demo](docs/demo.md) · [requirement traceability](PLAN.md)
+
+The interface refresh and its verification are documented in [docs/ui-refresh.md](docs/ui-refresh.md).

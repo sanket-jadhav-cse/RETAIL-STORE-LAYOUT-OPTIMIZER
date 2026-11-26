@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, errorMessage, downloadReport } from "./api";
-import Graph, { pct, PairDetails } from "./Graph";
+import Icon from "./Icon";
+import Overview from "./Overview";
+import { DatasetScreen, MiningScreen, ResultsScreen } from "./Results";
+import { Notice, Status } from "./ui";
+import { useTheme } from "./theme";
+
 const pages = [
   "Dashboard",
   "Dataset",
@@ -9,6 +14,7 @@ const pages = [
   "Layout visualization",
   "Recommendation report",
 ];
+const pageIcons = ["grid", "database", "sliders", "rules", "network", "report"];
 const headings = [
   "Purchase patterns, made practical.",
   "Know your source data.",
@@ -17,35 +23,21 @@ const headings = [
   "Explore product connections.",
   "Recommendations with context.",
 ];
-function Pager({ page, setPage, total, size = 25 }) {
-  return (
-    <div className="flex gap-4 items-center mt-5">
-      <button disabled={page === 1} onClick={() => setPage(page - 1)}>
-        Previous
-      </button>
-      <span className="muted">
-        Page {page} · {total} results
-      </span>
-      <button disabled={page * size >= total} onClick={() => setPage(page + 1)}>
-        Next
-      </button>
-    </div>
-  );
-}
-function Notice({ children }) {
-  return (
-    <p role="status" className="panel my-4">
-      {children}
-    </p>
-  );
-}
+const descriptions = [
+  "A clearer picture of what your customers buy together.",
+  "Understand the source and quality behind every recommendation.",
+  "Configure your analysis and uncover patterns in purchase history.",
+  "Turn association metrics into informed merchandising decisions.",
+  "See the connections behind your next product display.",
+  "A practical evidence trail for your merchandising review.",
+];
 export default function App() {
   const [screen, setScreen] = useState(0),
     [datasets, setDatasets] = useState([]),
     [datasetId, setDatasetId] = useState(""),
     [run, setRun] = useState(null),
     [runId, setRunId] = useState(
-      window.localStorage.getItem("retailRun") || "",
+      () => window.localStorage.getItem("retailRun") || "",
     ),
     [runInput, setRunInput] = useState(""),
     [loading, setLoading] = useState(false),
@@ -54,6 +46,7 @@ export default function App() {
     [result, setResult] = useState(null),
     [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
+    [searchQuery, setSearchQuery] = useState(""),
     [lift, setLift] = useState(0),
     [sort, setSort] = useState("lift"),
     [token, setToken] = useState(""),
@@ -63,8 +56,27 @@ export default function App() {
       min_confidence: 0.5,
       min_lift: 1,
       max_itemset_size: 3,
-    });
+    }),
+    [theme, toggleTheme] = useTheme(),
+    [menuOpen, setMenuOpen] = useState(false),
+    [overviewPairs, setOverviewPairs] = useState(null),
+    [overviewError, setOverviewError] = useState(false),
+    [exporting, setExporting] = useState(false),
+    [feedback, setFeedback] = useState("");
+  const heading = useRef(null),
+    focusNextPage = useRef(false);
   const dataset = datasets.find((d) => d.dataset_id === datasetId);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+  useEffect(() => {
+    document.title = `${pages[screen]} · RetailAtlas`;
+    if (focusNextPage.current) {
+      heading.current?.focus({ preventScroll: true });
+      window.scrollTo?.({ top: 0, behavior: "instant" });
+      focusNextPage.current = false;
+    }
+  }, [screen]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -113,9 +125,12 @@ export default function App() {
     };
   }, [runId, refresh]);
   useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(search), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+  useEffect(() => {
     setPage(1);
-    setResult(null);
-  }, [screen, runId, search, lift, sort]);
+  }, [screen, runId, searchQuery, lift, sort]);
   useEffect(() => {
     if (run?.status !== "Completed" || screen < 3) return;
     const controller = new AbortController();
@@ -125,10 +140,18 @@ export default function App() {
       screen === 3 ? "rules" : screen === 4 ? "adjacencies" : "report";
     api
       .get(`/runs/${runId}/${path}`, {
-        params: { page, page_size: 25, search, min_lift: lift, sort },
+        params: {
+          page,
+          page_size: 25,
+          search: searchQuery,
+          min_lift: lift,
+          sort,
+        },
         signal: controller.signal,
       })
-      .then(({ data }) => setResult(data))
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setResult(data);
+      })
       .catch((e) => {
         if (e.code !== "ERR_CANCELED") setError(errorMessage(e));
       })
@@ -136,18 +159,58 @@ export default function App() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [screen, runId, run?.status, page, search, lift, sort]);
-  const navigate = (i) => {
+  }, [screen, runId, run?.status, page, searchQuery, lift, sort]);
+  useEffect(() => {
+    setOverviewPairs(null);
+    setOverviewError(false);
+    if (run?.status !== "Completed") return;
+    const controller = new AbortController();
+    api
+      .get(`/runs/${runId}/adjacencies`, {
+        params: { page: 1, page_size: 3 },
+        signal: controller.signal,
+      })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setOverviewPairs(data.items || []);
+      })
+      .catch((error) => {
+        if (error.code !== "ERR_CANCELED") {
+          setOverviewError(true);
+          setOverviewPairs([]);
+        }
+      });
+    return () => controller.abort();
+  }, [runId, run?.status, refresh]);
+  function navigate(index) {
+    if (index === screen) {
+      setMenuOpen(false);
+      heading.current?.focus({ preventScroll: true });
+      return;
+    }
     setResult(null);
-    setScreen(i);
+    setScreen(index);
     setError("");
+    setFeedback("");
     setPage(1);
-  };
+    setMenuOpen(false);
+    focusNextPage.current = index !== screen;
+  }
+  function chooseDataset(id) {
+    setDatasetId(id);
+    setRun(null);
+    setResult(null);
+    setOverviewPairs(null);
+    setOverviewError(false);
+    setRunId(datasets.find((d) => d.dataset_id === id)?.latest_run_id || "");
+    window.localStorage.removeItem("retailRun");
+    setError("");
+  }
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
     setError("");
+    setFeedback("");
     try {
       const { data } = await api.post(
         "/runs",
@@ -164,391 +227,276 @@ export default function App() {
       setRun(data);
       setRunId(data.run_id);
       setToken("");
+      setFeedback("Mining run submitted. Its status will update here.");
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setBusy(false);
     }
   }
-  const rows = screen === 5 ? result?.recommendations?.items : result?.items;
+  async function exportReport() {
+    if (exporting) return;
+    setExporting(true);
+    setError("");
+    try {
+      await downloadReport(runId);
+      setFeedback("Your recommendation report has been downloaded.");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  }
   return (
-    <div className="min-h-screen md:flex">
-      <aside className="md:w-64 bg-slate-950 text-slate-200 p-6 md:fixed md:h-screen">
-        <div className="font-semibold text-2xl text-white">
-          Retail<span className="text-teal-400">Atlas</span>
-        </div>
-        <p className="text-sm text-slate-400 mt-2 mb-10">STORE INTELLIGENCE</p>
-        <nav
-          aria-label="Main navigation"
-          className="flex flex-wrap md:flex-col gap-2"
-        >
-          {pages.map((p, i) => (
-            <button
-              key={p}
-              aria-current={screen === i ? "page" : undefined}
-              onClick={() => navigate(i)}
-              className={`text-left text-sm ${screen === i ? "bg-teal-700" : "bg-transparent hover:bg-slate-800"}`}
-            >
-              {p}
-            </button>
-          ))}
-        </nav>
-        <p className="text-sm text-slate-400 mt-10">
-          FP-Growth · Evidence-based planning
-          <br />
-          Sanket Jadhav
-        </p>
-      </aside>
-      <main className="md:ml-64 p-5 md:p-10 w-full max-w-screen-2xl">
-        <header className="flex flex-wrap justify-between gap-4 mb-8">
-          <div>
-            <p className="text-teal-800 text-sm font-semibold uppercase tracking-widest mb-2">
-              {pages[screen]}
-            </p>
-            <h1>{headings[screen]}</h1>
+    <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <aside className="sidebar">
+        <div className="brand-row">
+          <div className="brand">
+            <span className="brand-mark">
+              <Icon name="grid" />
+            </span>
+            <div>
+              <span>RetailAtlas</span>
+              <small>Retail intelligence</small>
+            </div>
           </div>
           <button
-            className="self-start"
-            onClick={() => {
-              setError("");
-              setRefresh((x) => x + 1);
-            }}
+            className="icon-button menu-toggle"
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={menuOpen}
+            aria-controls="main-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
           >
-            Refresh
+            <Icon name={menuOpen ? "close" : "menu"} />
           </button>
-        </header>
-        <div className="panel controls">
-          <label>
-            Dataset
-            <select
-              value={datasetId}
-              onChange={(e) => {
-                const id = e.target.value;
-                setDatasetId(id);
-                setRun(null);
-                setResult(null);
-                setRunId(
-                  datasets.find((d) => d.dataset_id === id)?.latest_run_id ||
-                    "",
-                );
-                window.localStorage.removeItem("retailRun");
+        </div>
+        <div className="sidebar-body" data-open={menuOpen}>
+          <p className="nav-label">Workspace</p>
+          <nav id="main-navigation" aria-label="Main navigation">
+            {pages.map((name, index) => (
+              <button
+                key={name}
+                onClick={() => navigate(index)}
+                aria-current={screen === index ? "page" : undefined}
+                className={`nav-item ${screen === index ? "active" : ""}`}
+              >
+                <Icon name={pageIcons[index]} />
+                <span>{name}</span>
+                {screen === index && (
+                  <span className="nav-indicator" aria-hidden="true" />
+                )}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-note">
+            <span className="sidebar-note-icon">
+              <Icon name="network" />
+            </span>
+            <h2>Built on evidence.</h2>
+            <p>Find useful connections in purchase history with FP-Growth.</p>
+            <span className="sidebar-tag">Conceptual adjacency</span>
+          </div>
+          <div className="sidebar-profile">
+            <span className="avatar">SJ</span>
+            <div>
+              <strong>Sanket Jadhav</strong>
+              <small>Retail analytics project</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div className="workspace">
+        <div className="topbar">
+          <div className="breadcrumb">
+            <span>Workspace</span>
+            <span aria-hidden="true">/</span>
+            <strong>{pages[screen]}</strong>
+          </div>
+          <div className="topbar-actions">
+            <span className="engine-label">
+              <Icon name="layers" />
+              FP-Growth
+            </span>
+            <button
+              className="icon-button"
+              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              onClick={toggleTheme}
+            >
+              <Icon name={theme === "light" ? "moon" : "sun"} />
+            </button>
+            <span className="topbar-avatar" aria-label="Sanket Jadhav">
+              SJ
+            </span>
+          </div>
+        </div>
+        <main id="main-content" className="main-content">
+          <header className="page-header">
+            <div>
+              <span className="eyebrow">{pages[screen]}</span>
+              <h1 ref={heading} tabIndex="-1">
+                {headings[screen]}
+              </h1>
+              <p>{descriptions[screen]}</p>
+            </div>
+            <button
+              className="button secondary refresh-button"
+              onClick={() => {
+                setError("");
+                setFeedback("");
+                setRefresh((n) => n + 1);
               }}
             >
-              <option value="">Select a dataset</option>
-              {datasets.map((d) => (
-                <option key={d.dataset_id} value={d.dataset_id}>
-                  {d.version} · {d.basket_count.toLocaleString()} baskets
-                </option>
-              ))}
-            </select>
-          </label>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setRun(null);
-              setResult(null);
-              setError("");
-              setRunId(runInput.trim());
-            }}
-            className="flex flex-wrap gap-2 items-end"
-          >
-            <label>
-              Retrieve persisted run
-              <input
-                placeholder="Run UUID"
-                value={runInput}
-                onChange={(e) => setRunInput(e.target.value)}
-              />
+              <Icon name="refresh" />
+              Refresh
+            </button>
+          </header>
+          <section className="context-bar" aria-label="Analysis selection">
+            <label className="dataset-picker">
+              <span>
+                <Icon name="database" />
+                Dataset
+              </span>
+              <select
+                aria-label="Dataset"
+                value={datasetId}
+                onChange={(e) => chooseDataset(e.target.value)}
+              >
+                <option value="">Select a dataset</option>
+                {datasets.map((d) => (
+                  <option key={d.dataset_id} value={d.dataset_id}>
+                    {d.version} · {d.basket_count.toLocaleString()} baskets
+                  </option>
+                ))}
+              </select>
             </label>
-            <button disabled={!runInput.trim()}>Load run</button>
-          </form>
-        </div>
-        {error && (
-          <div role="alert" className="panel border-red-300 text-red-800 mb-4">
-            {error}
-          </div>
-        )}
-        {loading && <Notice>Loading data…</Notice>}
-        {!loading && !datasets.length && (
-          <Notice>
-            No dataset imported. Run the controlled backend import script to get
-            started.
-          </Notice>
-        )}
-        {run && (
-          <p className="muted mb-5">
-            Run {run.run_id} · {run.status} · Dataset {run.dataset_id}
-            {run.error && ` · ${run.error}`}
-          </p>
-        )}
-        {screen === 0 && (
-          <>
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {[
-                ["Available datasets", datasets.length],
-                ["Eligible transactions", dataset?.basket_count],
-                ["Products", dataset?.summary.product_count],
-                ["Frequent itemsets", run?.execution.itemset_count],
-                ["Association rules", run?.execution.rule_count],
-                ["Recommended pairs", run?.execution.adjacency_count],
-              ].map(([title, value]) => (
-                <div key={title} className="metric">
-                  <span className="muted">{title}</span>
-                  <strong>
-                    {value == null ? "—" : value.toLocaleString()}
-                  </strong>
-                </div>
-              ))}
-            </div>
-            <section className="panel mt-6">
-              <h2>Turn purchase history into planning evidence</h2>
-              <p className="mb-5">
-                Select a dataset, configure thresholds, and inspect the
-                resulting associations. Recommendations suggest adjacency
-                candidates; they do not guarantee sales improvements.
-              </p>
-              <button onClick={() => navigate(2)}>
-                Configure a mining run
-              </button>
-            </section>
-          </>
-        )}
-        {screen === 1 && dataset && (
-          <section className="panel">
-            <h2>{dataset.source}</h2>
-            <p className="muted mb-6">
-              Version {dataset.version} · Imported{" "}
-              {new Date(dataset.imported_at).toLocaleString()}
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <tbody>
-                  {Object.entries(dataset.summary)
-                    .filter(([k]) => k !== "excluded")
-                    .map(([k, v]) => (
-                      <tr key={k}>
-                        <th>{k.replaceAll("_", " ")}</th>
-                        <td>{String(v)}</td>
-                      </tr>
-                    ))}
-                  {Object.entries(dataset.summary.excluded || {}).map(
-                    ([k, v]) => (
-                      <tr key={k}>
-                        <th>Excluded: {k.replaceAll("_", " ")}</th>
-                        <td>{v}</td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-        {screen === 2 && (
-          <section className="panel">
-            <h2>FP-Growth configuration</h2>
-            <p className="muted mb-6">
-              Lower support can produce many patterns and require more memory.
-              Itemset size limits pattern complexity without removing baskets.
-            </p>
-            <form onSubmit={submit} className="grid sm:grid-cols-2 gap-5">
-              {[
-                ["min_support", "Minimum support", 0.0001, 1, 0.0001],
-                ["min_confidence", "Minimum confidence", 0.0001, 1, 0.0001],
-                ["min_lift", "Minimum lift", 0, 1000000, 0.01],
-                [
-                  "max_itemset_size",
-                  "Maximum itemset size (optional)",
-                  1,
-                  8,
-                  1,
-                ],
-              ].map(([key, title, min, max, step]) => (
-                <label key={key}>
-                  {title}
-                  <input
-                    type="number"
-                    min={min}
-                    max={max}
-                    step={step}
-                    required={key !== "max_itemset_size"}
-                    value={params[key]}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        [key]:
-                          e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-              ))}
-              <label>
-                Operator token
-                <input
-                  aria-label="Operator token"
-                  type="password"
-                  autoComplete="off"
-                  required
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                />
-                <span className="muted">
-                  Used for this request only; never saved in browser storage.
-                </span>
-              </label>
-              <div className="self-end">
-                <button
-                  disabled={
-                    busy ||
-                    !datasetId ||
-                    ["Queued", "Running"].includes(run?.status)
-                  }
-                >
-                  {busy ? "Submitting…" : "Run FP-Growth"}
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
-        {screen >= 3 && run?.status !== "Completed" && (
-          <Notice>Select a completed run to inspect results.</Notice>
-        )}
-        {screen >= 3 && run?.status === "Completed" && (
-          <section className="panel">
-            {screen < 5 && (
-              <div className="controls">
-                {screen === 3 && (
-                  <>
-                    <label>
-                      Search products
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Sort by
-                      <select
-                        value={sort}
-                        onChange={(e) => setSort(e.target.value)}
-                      >
-                        {["lift", "support", "confidence"].map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </>
-                )}
+            <details className="load-run">
+              <summary>
+                Load a previous run
+                <Icon name="chevron" />
+              </summary>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setRun(null);
+                  setResult(null);
+                  setError("");
+                  setRunId(runInput.trim());
+                }}
+              >
                 <label>
-                  Minimum lift
+                  Retrieve persisted run
                   <input
-                    type="number"
-                    min="0"
-                    step=".1"
-                    value={lift}
-                    onChange={(e) =>
-                      setLift(Math.max(0, Number(e.target.value)))
-                    }
+                    placeholder="Paste a run UUID"
+                    required
+                    value={runInput}
+                    onChange={(e) => setRunInput(e.target.value)}
                   />
                 </label>
-              </div>
-            )}
-            {!loading && rows?.length === 0 && (
-              <Notice>No qualifying results. Try different thresholds.</Notice>
-            )}
-            {screen === 3 && rows?.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr>
-                      {[
-                        "Antecedent",
-                        "Consequent",
-                        "Support",
-                        "Confidence",
-                        "Lift",
-                      ].map((h) => (
-                        <th key={h}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r) => (
-                      <tr key={r.rule_id}>
-                        <td>
-                          {r.antecedent_names.join(" + ")}
-                          <small className="block muted">
-                            {r.antecedent.join(", ")}
-                          </small>
-                        </td>
-                        <td>
-                          {r.consequent_names.join(" + ")}
-                          <small className="block muted">
-                            {r.consequent.join(", ")}
-                          </small>
-                        </td>
-                        <td>{pct(r.support)}</td>
-                        <td>{pct(r.confidence)}</td>
-                        <td>{r.lift.toFixed(3)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {screen === 4 && rows?.length > 0 && <Graph pairs={rows} />}
-            {screen === 5 && result && (
-              <>
-                <h2>Recommendation evidence</h2>
-                <p className="mb-3">
-                  {result.dataset.source} · {result.dataset.version}
-                </p>
-                <p className="muted mb-3">
-                  Support ≥ {result.run.min_support}; confidence ≥{" "}
-                  {result.run.min_confidence}; lift ≥ {result.run.min_lift}.
-                  Maximum itemset size:{" "}
-                  {result.run.max_itemset_size ?? "unbounded"}. Runtime:{" "}
-                  {result.run.execution.elapsed_seconds?.toFixed(2)} seconds.
-                </p>
-                <p className="mb-5">{result.review}</p>
-                <button
-                  onClick={() =>
-                    downloadReport(runId).catch((e) =>
-                      setError(errorMessage(e)),
-                    )
-                  }
-                >
-                  Export complete CSV report
-                </button>
-                <div className="space-y-6 mt-6">
-                  {rows?.map((p) => (
-                    <article key={p.rank} className="border-t pt-5">
-                      <p className="muted">
-                        Rank {p.rank} · {p.product_a} / {p.product_b}
-                      </p>
-                      <PairDetails pair={p} />
-                    </article>
-                  ))}
+                <button className="button secondary">Load run</button>
+              </form>
+            </details>
+          </section>
+          <div className="announcement sr-only" role="status">
+            {feedback || (run ? `Mining status: ${run.status}` : "")}
+          </div>
+          {error && (
+            <Notice kind="error" title="We couldn’t complete that request">
+              {error} Use Refresh to retry, or check your connection and inputs.
+            </Notice>
+          )}
+          {feedback && <Notice kind="success">{feedback}</Notice>}
+          <div className="loading-slot" role="status">
+            {loading ? "Loading data…" : ""}
+          </div>
+          {!loading && !datasets.length && (
+            <Notice title="Start with your transaction data">
+              No dataset imported. Use the dataset setup instructions to import
+              Online Retail, then refresh this page.
+            </Notice>
+          )}
+          {run && (
+            <div className="run-status-row">
+              <Status status={run.status} />
+              <span className="muted">Selected analysis</span>
+              {run.execution?.elapsed_seconds != null && (
+                <span className="run-duration">
+                  <Icon name="clock" />
+                  {run.execution.elapsed_seconds.toFixed(2)} s
+                </span>
+              )}
+              <details className="run-details">
+                <summary>
+                  Run details
+                  <Icon name="chevron" />
+                </summary>
+                <div>
+                  <p>Run {run.run_id}</p>
+                  <p>Dataset {run.dataset_id}</p>
                 </div>
-              </>
+              </details>
+              {run.error && <span className="run-error">{run.error}</span>}
+            </div>
+          )}
+          <div className="page-content">
+            {screen === 0 && (
+              <Overview
+                dataset={dataset}
+                datasets={datasets}
+                run={run}
+                pairs={overviewPairs}
+                pairsError={overviewError}
+                onNavigate={navigate}
+              />
             )}
-            {result && (
-              <Pager
+            {screen === 1 && <DatasetScreen dataset={dataset} />}
+            {screen === 2 && (
+              <MiningScreen
+                params={params}
+                setParams={setParams}
+                token={token}
+                setToken={setToken}
+                busy={busy}
+                datasetId={datasetId}
+                run={run}
+                onSubmit={submit}
+              />
+            )}
+            {screen >= 3 && (
+              <ResultsScreen
+                screen={screen}
+                runId={runId}
+                run={run}
+                result={result}
+                loading={loading}
                 page={page}
                 setPage={setPage}
-                total={
-                  screen === 5 ? result.recommendations.total : result.total
-                }
+                search={search}
+                setSearch={setSearch}
+                lift={lift}
+                setLift={setLift}
+                sort={sort}
+                setSort={setSort}
+                onExport={exportReport}
+                exporting={exporting}
               />
             )}
-          </section>
-        )}
-        <footer className="muted mt-10">
-          Retail Store Layout Optimizer · FP-Growth · Conceptual decision
-          support
-        </footer>
-      </main>
+          </div>
+          <footer className="page-footer">
+            <span>
+              RetailAtlas <span aria-hidden="true">·</span> Retail Store Layout
+              Optimizer
+            </span>
+            <span>
+              <Icon name="shield" />
+              Evidence-based planning
+            </span>
+          </footer>
+        </main>
+      </div>
     </div>
   );
 }
