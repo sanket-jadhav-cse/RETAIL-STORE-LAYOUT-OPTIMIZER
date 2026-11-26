@@ -259,6 +259,18 @@ export function MiningScreen({
           strength.
         </SectionHeading>
         <form onSubmit={onSubmit}>
+          <label className="run-name-field">
+            Run name (optional)
+            <input
+              value={params.name || ""}
+              maxLength={120}
+              placeholder="For example, High-Confidence Product Associations"
+              onChange={(e) => setParams({ ...params, name: e.target.value })}
+            />
+            <span className="field-help">
+              Leave blank for a name based on the dataset, date and thresholds.
+            </span>
+          </label>
           <div className="form-grid">
             {fields.map(([key, title, min, max, step, help]) => (
               <label key={key} htmlFor={key}>

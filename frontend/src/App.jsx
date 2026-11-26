@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage, downloadReport, runPath } from "./api";
 import Icon from "./Icon";
+import RunSelector from "./RunSelector";
+import { Popover } from "./overlays";
 import Account, { UserMenu } from "./Account";
 import Overview from "./Overview";
 import { DatasetScreen, MiningScreen, ResultsScreen } from "./Results";
@@ -41,7 +43,6 @@ export default function App() {
     [datasetId, setDatasetId] = useState(""),
     [run, setRun] = useState(null),
     [runId, setRunId] = useState(""),
-    [runInput, setRunInput] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0),
@@ -52,7 +53,9 @@ export default function App() {
     [lift, setLift] = useState(0),
     [sort, setSort] = useState("lift"),
     [busy, setBusy] = useState(false),
+    [renaming, setRenaming] = useState(false),
     [params, setParams] = useState({
+      name: "",
       min_support: 0.02,
       min_confidence: 0.5,
       min_lift: 1,
@@ -65,7 +68,10 @@ export default function App() {
     [exporting, setExporting] = useState(false),
     [feedback, setFeedback] = useState("");
   const heading = useRef(null),
-    focusNextPage = useRef(false);
+    focusNextPage = useRef(false),
+    selectedRun = useRef(null),
+    activeRunId = useRef(runId);
+  activeRunId.current = runId;
   const dataset = datasets.find((d) => d.dataset_id === datasetId);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -117,7 +123,12 @@ export default function App() {
         if (active) setError(errorMessage(error));
       }
     };
-    poll();
+    if (selectedRun.current?.run_id === runId) {
+      const loaded = selectedRun.current;
+      selectedRun.current = null;
+      if (["Queued", "Running"].includes(loaded.status))
+        timer = setTimeout(poll, 1500);
+    } else poll();
     return () => {
       active = false;
       clearTimeout(timer);
@@ -203,6 +214,39 @@ export default function App() {
     setRunId(datasets.find((d) => d.dataset_id === id)?.latest_run_id || "");
     setError("");
   }
+  function chooseRun(next) {
+    if (next.run_id === runId) {
+      setRun(next);
+      setError("");
+      return;
+    }
+    selectedRun.current = next;
+    setRun(next);
+    setRunId(next.run_id);
+    setDatasetId(next.dataset_id);
+    setResult(null);
+    setOverviewPairs(null);
+    setPage(1);
+    setError("");
+  }
+  async function renameRun(event) {
+    event.preventDefault();
+    if (renaming) return;
+    const renamedId = runId;
+    setRenaming(true);
+    try {
+      const name = new FormData(event.currentTarget).get("name");
+      const { data } = await api.patch(runPath(renamedId), { name });
+      if (activeRunId.current !== renamedId) return;
+      setRun(data);
+      setFeedback("Run name updated.");
+      setRefresh((n) => n + 1);
+    } catch (e) {
+      if (activeRunId.current === renamedId) setError(errorMessage(e));
+    } finally {
+      setRenaming(false);
+    }
+  }
   async function submit(e) {
     e.preventDefault();
     if (busy) return;
@@ -212,6 +256,7 @@ export default function App() {
     try {
       const { data } = await api.post("/runs", {
         ...params,
+        name: params.name.trim() || null,
         max_itemset_size:
           params.max_itemset_size === ""
             ? null
@@ -371,34 +416,12 @@ export default function App() {
                 ))}
               </select>
             </label>
-            <details className="load-run">
-              <summary>
-                Load a previous run
-                <Icon name="chevron" />
-              </summary>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setRun(null);
-                  setResult(null);
-                  setError("");
-                  setRunId(runInput.trim());
-                }}
-              >
-                <label>
-                  Retrieve persisted run
-                  <input
-                    placeholder="Paste a run UUID"
-                    required
-                    value={runInput}
-                    onChange={(e) => setRunInput(e.target.value)}
-                  />
-                </label>
-                <button type="submit" className="button secondary">
-                  Load run
-                </button>
-              </form>
-            </details>
+            <RunSelector
+              selectedId={runId}
+              onSelect={chooseRun}
+              datasets={datasets}
+              refresh={refresh}
+            />
           </section>
           <output className="announcement sr-only">
             {feedback || (run ? `Mining status: ${run.status}` : "")}
@@ -421,23 +444,51 @@ export default function App() {
           {run && (
             <div className="run-status-row">
               <Status status={run.status} />
-              <span className="muted">Selected analysis</span>
+              <span className="selected-run-name">
+                {run.name || "Selected analysis"}
+              </span>
               {run.execution?.elapsed_seconds != null && (
                 <span className="run-duration">
                   <Icon name="clock" />
                   {run.execution.elapsed_seconds.toFixed(2)} s
                 </span>
               )}
-              <details className="run-details">
-                <summary>
-                  Run details
-                  <Icon name="chevron" />
-                </summary>
-                <div>
-                  <p>Run {run.run_id}</p>
-                  <p>Dataset {run.dataset_id}</p>
-                </div>
-              </details>
+              <Popover
+                label="Run details"
+                trigger={
+                  <button type="button" className="button secondary">
+                    Run details
+                    <Icon name="chevron" />
+                  </button>
+                }
+              >
+                <p>Run {run.run_id}</p>
+                <p>Dataset {dataset?.name || "Unavailable"}</p>
+                <p>Created {new Date(run.created_at).toLocaleString()}</p>
+                <p>
+                  Support {run.min_support} · Confidence {run.min_confidence} ·
+                  Lift {run.min_lift}
+                </p>
+                <form onSubmit={renameRun}>
+                  <label>
+                    Rename run
+                    <input
+                      name="name"
+                      required
+                      maxLength={120}
+                      defaultValue={run.name}
+                      key={`${runId}-${run.name}`}
+                    />
+                  </label>
+                  <button
+                    className="button secondary"
+                    type="submit"
+                    disabled={renaming}
+                  >
+                    {renaming ? "Saving…" : "Save run name"}
+                  </button>
+                </form>
+              </Popover>
               {run.error && <span className="run-error">{run.error}</span>}
             </div>
           )}
@@ -450,6 +501,15 @@ export default function App() {
                 pairs={overviewPairs}
                 pairsError={overviewError}
                 onNavigate={navigate}
+              />
+            )}
+            {screen === 0 && (
+              <RunSelector
+                inline
+                selectedId={runId}
+                onSelect={chooseRun}
+                datasets={datasets}
+                refresh={refresh}
               />
             )}
             {screen === 1 && (

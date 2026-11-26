@@ -65,7 +65,7 @@ it("shows empty, loading and failure states", async () => {
   cleanup();
   api.get.mockRejectedValue(new Error("offline"));
   render(<App />);
-  await screen.findByRole("alert");
+  await screen.findByText("We couldn’t complete that request");
 });
 it("submits thresholds through the authenticated API client", async () => {
   api.post.mockResolvedValue({
@@ -133,7 +133,7 @@ it("renders rules and report responses", async () => {
     }),
   );
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   fireEvent.click(
     screen.getByRole("button", { name: "Association rules", exact: true }),
   );
@@ -272,7 +272,7 @@ it("keeps the current result table when its active navigation item is selected a
     }),
   );
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   const button = screen.getByRole("button", {
     name: "Association rules",
     exact: true,
@@ -318,7 +318,7 @@ it("debounces search and retains the table while the filtered request is pending
     });
   });
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   fireEvent.click(
     screen.getByRole("button", { name: "Association rules", exact: true }),
   );
@@ -345,8 +345,11 @@ it("debounces search and retains the table while the filtered request is pending
 it("handles a malformed cached run ID without making a request outside the run API", async () => {
   dataset.latest_run_id = "../../datasets";
   render(<App />);
-  await screen.findByRole("alert");
-  expect(api.get.mock.calls.map(([path]) => path)).toEqual(["/datasets"]);
+  await screen.findByText("We couldn’t complete that request");
+  expect(api.get.mock.calls.map(([path]) => path).sort()).toEqual([
+    "/datasets",
+    "/runs",
+  ]);
 });
 
 it("searches source-specific dataset names and selects the matching catalog entry", async () => {
@@ -371,4 +374,62 @@ it("searches source-specific dataset names and selects the matching catalog entr
   fireEvent.click(option);
   expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
   expect(option).toHaveAttribute("aria-pressed", "true");
+});
+
+it("keeps the loaded rule table when selecting the same run from history", async () => {
+  dataset.latest_run_id = RUN_ID;
+  const run = {
+    run_id: RUN_ID,
+    dataset_id: "d1",
+    status: "Completed",
+    execution: {},
+    name: "Baseline Analysis",
+    created_at: "2026-11-26T00:00:00Z",
+  };
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path === "/runs"
+            ? { items: [{ ...run, dataset_name: "UCI" }], total: 1 }
+            : path.endsWith("/rules")
+              ? {
+                  items: [
+                    {
+                      rule_id: "1",
+                      antecedent: ["A"],
+                      consequent: ["B"],
+                      antecedent_names: ["Apples"],
+                      consequent_names: ["Bread"],
+                      support: 0.2,
+                      confidence: 0.5,
+                      lift: 1.5,
+                    },
+                  ],
+                  total: 1,
+                }
+              : path.endsWith("/adjacencies")
+                ? { items: [], total: 0 }
+                : run,
+    }),
+  );
+  render(<App />);
+  await screen.findByText("Baseline Analysis", {
+    selector: ".selected-run-name",
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Association rules", exact: true }),
+  );
+  await screen.findByText("Apples");
+  fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
+  fireEvent.click(
+    await screen.findByRole("option", { name: /Baseline Analysis/ }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("combobox", { name: "Search previous runs" }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(screen.getByText("Apples")).toBeInTheDocument();
 });
