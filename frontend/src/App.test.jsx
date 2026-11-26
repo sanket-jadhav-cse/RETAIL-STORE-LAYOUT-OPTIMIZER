@@ -29,6 +29,7 @@ const dataset = {
 };
 beforeEach(() => {
   window.localStorage.clear();
+  dataset.latest_run_id = null;
   api.get.mockReset();
   api.post.mockReset();
   api.get.mockResolvedValue({ data: [dataset] });
@@ -66,7 +67,7 @@ it("shows empty, loading and failure states", async () => {
   render(<App />);
   await screen.findByRole("alert");
 });
-it("submits thresholds with a memory-only operator token", async () => {
+it("submits thresholds through the authenticated API client", async () => {
   api.post.mockResolvedValue({
     data: {
       run_id: RUN_ID,
@@ -84,21 +85,17 @@ it("submits thresholds with a memory-only operator token", async () => {
     "min",
     "0.0001",
   );
-  fireEvent.change(screen.getByLabelText("Operator token"), {
-    target: { value: "test-token" },
-  });
   fireEvent.click(screen.getByRole("button", { name: "Run FP-Growth" }));
   await waitFor(() =>
     expect(api.post).toHaveBeenCalledWith(
       "/runs",
       expect.objectContaining({ min_support: 0.02, dataset_id: "d1" }),
-      { headers: { Authorization: "Bearer test-token" } },
     ),
   );
   expect(window.localStorage.getItem("token")).toBeNull();
 });
 it("renders rules and report responses", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -172,7 +169,7 @@ it("inspects graph evidence and resets zoom", () => {
 });
 
 it("clears old run statistics when selecting another dataset", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -242,7 +239,7 @@ it("supports Space on graph relationships and provides button alternatives to dr
 });
 
 it("keeps the current result table when its active navigation item is selected again", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -287,7 +284,7 @@ it("keeps the current result table when its active navigation item is selected a
 });
 
 it("debounces search and retains the table while the filtered request is pending", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   let finishSearch;
   const rule = {
     rule_id: "1",
@@ -346,7 +343,7 @@ it("debounces search and retains the table while the filtered request is pending
 });
 
 it("handles a malformed cached run ID without making a request outside the run API", async () => {
-  window.localStorage.setItem("retailRun", "../../datasets");
+  dataset.latest_run_id = "../../datasets";
   render(<App />);
   await screen.findByRole("alert");
   expect(api.get.mock.calls.map(([path]) => path)).toEqual(["/datasets"]);

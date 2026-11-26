@@ -119,8 +119,6 @@ export function DatasetScreen({ dataset }) {
 export function MiningScreen({
   params,
   setParams,
-  token,
-  setToken,
   busy,
   datasetId,
   run,
@@ -205,33 +203,9 @@ export function MiningScreen({
               </label>
             ))}
           </div>
-          <div className="operator-section">
-            <Icon name="shield" />
-            <div>
-              <h3>Authorized mining access</h3>
-              <p className="muted">
-                Reading results is open. Starting a run requires your operator
-                token.
-              </p>
-            </div>
-          </div>
-          <label className="token-field" htmlFor="operator-token">
-            <span>Operator token</span>
-            <input
-              id="operator-token"
-              aria-label="Operator token"
-              name="operator_token"
-              type="password"
-              autoComplete="off"
-              required
-              value={token}
-              aria-describedby="token-help"
-              onChange={(e) => setToken(e.target.value)}
-            />
-            <span id="token-help" className="field-help">
-              Used for this request only; never saved in browser storage.
-            </span>
-          </label>
+          <p className="muted">
+            Runs and results are private to your signed-in account.
+          </p>
           <div className="form-actions">
             <span className="muted">{submissionHelp}</span>
             <button

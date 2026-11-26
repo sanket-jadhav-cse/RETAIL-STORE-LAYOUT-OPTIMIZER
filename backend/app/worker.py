@@ -8,7 +8,8 @@ import threading
 import time
 from uuid import UUID
 
-from app.config import Session, engine, settings
+from app.config import MaintenanceSession as Session
+from app.config import engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, now
 from sqlalchemy import select, text, update
 

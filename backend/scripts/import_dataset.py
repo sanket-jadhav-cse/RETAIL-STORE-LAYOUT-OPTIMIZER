@@ -4,7 +4,8 @@ import json
 import os
 from pathlib import Path
 
-from app.config import Session, settings
+from app.config import MaintenanceSession as Session
+from app.config import settings
 from app.mining.preprocessing import load, preprocess
 from app.models import Dataset, Product
 from sqlalchemy import select
