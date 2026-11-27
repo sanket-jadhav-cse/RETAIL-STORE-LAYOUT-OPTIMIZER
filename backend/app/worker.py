@@ -12,6 +12,7 @@ from app.config import MaintenanceSession as Session
 from app.config import engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, now
 from sqlalchemy import select, text, update
+from sqlalchemy.exc import SQLAlchemyError
 
 LOCK_ID = 240410700193
 
@@ -72,34 +73,64 @@ class Runner:
         self.ready = False
 
     def start(self):
+        if self.ready or (self.thread and self.thread.is_alive()):
+            raise RuntimeError("Mining scheduler already running")
+        self.stop_event.clear()
         self.connection = engine.connect()
-        acquired = self.connection.scalar(
-            text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_ID}
+        try:
+            acquired = self.connection.scalar(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_ID}
+            )
+            self.connection.commit()
+            if not acquired:
+                raise RuntimeError("Only one application worker is supported")
+            with Session.begin() as session:
+                session.execute(
+                    update(MiningRun)
+                    .where(MiningRun.status.in_(["Queued", "Running"]))
+                    .values(
+                        status="Failed",
+                        error="Interrupted by application restart; submit a new run.",
+                        completed_at=now(),
+                    )
+                )
+            self.ready = True
+            self.thread = threading.Thread(target=self.loop, daemon=True)
+            self.thread.start()
+        except BaseException:
+            self.close()
+            raise
+
+    def ensure_lock(self):
+        # A reconnected session must not silently continue without its lock.
+        held = self.connection.scalar(
+            text("""SELECT EXISTS (SELECT 1 FROM pg_locks
+            WHERE locktype='advisory' AND pid=pg_backend_pid() AND granted AND objsubid=1
+            AND classid::bigint=:high AND objid::bigint=:low)"""),
+            {"high": LOCK_ID >> 32, "low": LOCK_ID & 0xFFFFFFFF},
         )
         self.connection.commit()
-        if not acquired:
-            self.connection.close()
-            raise RuntimeError("Only one application worker is supported")
-        with Session.begin() as session:
-            session.execute(
-                update(MiningRun)
-                .where(MiningRun.status.in_(["Queued", "Running"]))
-                .values(
-                    status="Failed",
-                    error="Interrupted by application restart; submit a new run.",
-                    completed_at=now(),
-                )
-            )
-        self.ready = True
-        self.thread = threading.Thread(target=self.loop, daemon=True)
-        self.thread.start()
+        if not held:
+            raise RuntimeError("Mining scheduler lock lost")
+
+    @staticmethod
+    def stop_child(child):
+        if child.is_alive():
+            child.terminate()
+            child.join(timeout=3)
+        if child.is_alive():
+            child.kill()
+            child.join(timeout=3)
+        else:
+            child.join()
+        if child.is_alive():
+            raise RuntimeError("Mining process did not stop")
 
     def loop(self):
         while not self.stop_event.wait(0.5):
-            # Stop scheduling if the advisory-lock connection has been lost.
+            child = None
             try:
-                self.connection.execute(text("SELECT 1"))
-                self.connection.commit()
+                self.ensure_lock()
                 with Session.begin() as session:
                     run = session.scalar(
                         select(MiningRun)
@@ -116,15 +147,16 @@ class Runner:
                 )
                 child.start()
                 deadline = time.monotonic() + settings.mining_timeout_seconds
+                next_heartbeat = time.monotonic() + 2
                 while (
                     child.is_alive()
                     and time.monotonic() < deadline
                     and not self.stop_event.wait(0.2)
                 ):
-                    pass
-                if child.is_alive():
-                    child.terminate()
-                child.join()
+                    if time.monotonic() >= next_heartbeat:
+                        self.ensure_lock()
+                        next_heartbeat = time.monotonic() + 2
+                self.stop_child(child)
                 with Session.begin() as session:
                     run = session.get(MiningRun, run_id)
                     if run.status != "Completed":
@@ -134,17 +166,31 @@ class Runner:
             except Exception:
                 self.ready = False
                 return
+            finally:
+                if child is not None:
+                    if child.pid is not None:
+                        self.stop_child(child)
+                    if not child.is_alive():
+                        child.close()
 
     def close(self):
         self.ready = False
         self.stop_event.set()
-        if self.thread:
-            self.thread.join(timeout=10)
-        if self.connection:
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=35)
+        connection = self.connection
+        if connection and not connection.closed:
             try:
-                self.connection.execute(
-                    text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_ID}
-                )
-                self.connection.commit()
+                if self.thread and self.thread.is_alive():
+                    connection.invalidate()
+                elif not connection.invalidated:
+                    if connection.in_transaction():
+                        connection.rollback()
+                    connection.execute(
+                        text("SELECT pg_advisory_unlock(:key)"), {"key": LOCK_ID}
+                    )
+                    connection.commit()
+            except SQLAlchemyError:
+                connection.invalidate()
             finally:
-                self.connection.close()
+                connection.close()
