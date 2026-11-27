@@ -157,6 +157,7 @@ export function AuthScreen({
   };
   function navigate(next) {
     setMode(next);
+    setVisible(false);
     setError("");
     setFeedback("");
   }
@@ -265,6 +266,7 @@ export function AuthScreen({
                 Password
                 <div className="password-control">
                   <input
+                    aria-label="Password"
                     name="password"
                     type={visible ? "text" : "password"}
                     autoComplete={

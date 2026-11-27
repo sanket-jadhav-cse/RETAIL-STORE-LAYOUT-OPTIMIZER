@@ -40,11 +40,11 @@ it("loads actual dashboard values and navigates all screens", async () => {
   await screen.findByText("100");
   expect(screen.getByText("3")).toBeInTheDocument();
   for (const name of [
-    "Dataset",
-    "Configure mining",
-    "Association rules",
-    "Layout visualization",
-    "Recommendation report",
+    "Datasets",
+    "Mining",
+    "Association Rules",
+    "Product Layout",
+    "Reports",
   ]) {
     fireEvent.click(screen.getByRole("button", { name, exact: true }));
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
@@ -78,9 +78,7 @@ it("submits thresholds through the authenticated API client", async () => {
   });
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(
-    screen.getByRole("button", { name: "Configure mining", exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
   expect(screen.getByLabelText("Minimum support")).toHaveAttribute(
     "min",
     "0.0001",
@@ -135,12 +133,10 @@ it("renders rules and report responses", async () => {
   render(<App />);
   await screen.findByText("Selected analysis");
   fireEvent.click(
-    screen.getByRole("button", { name: "Association rules", exact: true }),
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
-  fireEvent.click(
-    screen.getByRole("button", { name: "Recommendation report", exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Reports", exact: true }));
   await screen.findByText("Review feasibility");
 });
 it("inspects graph evidence and resets zoom", () => {
@@ -203,13 +199,13 @@ it("clears old run statistics when selecting another dataset", async () => {
 it("toggles and persists the selected color theme", async () => {
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
   expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-  expect(window.localStorage.getItem("retailTheme")).toBe("dark");
   fireEvent.click(
     screen.getByRole("button", { name: "Switch to light theme" }),
   );
   expect(window.localStorage.getItem("retailTheme")).toBe("light");
+  fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
+  expect(window.localStorage.getItem("retailTheme")).toBe("dark");
 });
 it("supports Space on graph relationships and provides button alternatives to dragging", () => {
   render(
@@ -274,7 +270,7 @@ it("keeps the current result table when its active navigation item is selected a
   render(<App />);
   await screen.findByText("Selected analysis");
   const button = screen.getByRole("button", {
-    name: "Association rules",
+    name: "Association Rules",
     exact: true,
   });
   fireEvent.click(button);
@@ -320,7 +316,7 @@ it("debounces search and retains the table while the filtered request is pending
   render(<App />);
   await screen.findByText("Selected analysis");
   fireEvent.click(
-    screen.getByRole("button", { name: "Association rules", exact: true }),
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
   fireEvent.change(screen.getByLabelText("Search products"), {
@@ -366,7 +362,9 @@ it("searches source-specific dataset names and selects the matching catalog entr
   });
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(screen.getByRole("button", { name: "Dataset", exact: true }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Datasets", exact: true }),
+  );
   fireEvent.change(screen.getByLabelText("Search datasets"), {
     target: { value: "North" },
   });
@@ -419,7 +417,7 @@ it("keeps the loaded rule table when selecting the same run from history", async
     selector: ".selected-run-name",
   });
   fireEvent.click(
-    screen.getByRole("button", { name: "Association rules", exact: true }),
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
   fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
@@ -432,4 +430,20 @@ it("keeps the loaded rule table when selecting the same run from history", async
     ).not.toBeInTheDocument(),
   );
   expect(screen.getByText("Apples")).toBeInTheDocument();
+});
+
+it("collapses the desktop sidebar and restores its preference", async () => {
+  render(<App />);
+  await screen.findByText("100");
+  fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+  expect(localStorage.getItem("retailSidebarCollapsed")).toBe("true");
+  expect(
+    screen.getByRole("button", { name: "Overview", exact: true }),
+  ).toHaveAttribute("title", "Overview");
+  cleanup();
+  render(<App />);
+  await screen.findByText("100");
+  expect(
+    screen.getByRole("button", { name: "Expand sidebar" }),
+  ).toHaveAttribute("aria-expanded", "false");
 });

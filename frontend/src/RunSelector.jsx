@@ -115,7 +115,9 @@ export default function RunSelector({
           aria-expanded={open || inline}
           aria-controls={listId}
           aria-activedescendant={
-            result?.items?.[active] ? `${listId}-${active}` : undefined
+            !loading && !error && result?.items?.[active]
+              ? `${listId}-${active}`
+              : undefined
           }
           aria-autocomplete="list"
           value={search}

@@ -30,7 +30,7 @@ export function DatasetQuality({ dataset }) {
       <div>
         <h3>Ready for invoice-level analysis</h3>
         <p className="muted">
-          {cleaned == null
+          {cleaned == null || original == null
             ? "Import a dataset to inspect its quality."
             : `${cleaned.toLocaleString()} cleaned records from ${original.toLocaleString()} source rows.`}
         </p>
@@ -101,47 +101,48 @@ export default function Overview({
   ];
   return (
     <>
-      <div className="overview-banner">
+      <section className="panel overview-summary">
         <div>
-          <span className="eyebrow">From baskets to better placement</span>
-          <h2>
-            Find the products that
-            <br className="desktop-break" /> belong together.
-          </h2>
-          <p>
-            Explore purchase patterns, understand the evidence, and plan your
-            next product display with confidence.
+          <span className="eyebrow">Selected dataset</span>
+          <h2>{dataset?.name || "No dataset selected"}</h2>
+          <p className="muted">
+            {dataset?.transaction_start && dataset?.transaction_end
+              ? `${dataset.transaction_start} – ${dataset.transaction_end} · `
+              : ""}
+            {dataset
+              ? `${dataset.basket_count.toLocaleString()} eligible baskets`
+              : "Select a dataset to begin"}
           </p>
+          <p className="mining-availability">
+            {!dataset
+              ? "Dataset Unavailable"
+              : run?.status === "Running" || run?.status === "Queued"
+                ? "Mining Running"
+                : run?.status === "Failed"
+                  ? "Mining Failed"
+                  : run?.status === "Completed"
+                    ? "Mining Completed"
+                    : "Mining Ready"}
+          </p>
+        </div>
+        <div className="button-group">
           <button
             type="button"
-            className="button banner-action"
+            className="button primary"
             onClick={() => onNavigate(2)}
           >
-            <Icon name="sliders" />
-            Configure a mining run
+            <Icon name="activity" />
+            New Mining Run
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => onNavigate(5)}
+          >
+            Open Report
           </button>
         </div>
-        <div className="banner-art" aria-hidden="true">
-          <svg viewBox="0 0 320 210">
-            <path d="M52 80 145 47 256 87 221 161 111 160 52 80M145 47l76 114M111 160l145-73M52 80l169 81" />
-            <g>
-              <rect x="29" y="57" width="46" height="46" rx="13" />
-              <rect x="122" y="24" width="46" height="46" rx="13" />
-              <rect x="233" y="64" width="46" height="46" rx="13" />
-              <rect x="198" y="138" width="46" height="46" rx="13" />
-              <rect x="88" y="137" width="46" height="46" rx="13" />
-            </g>
-            <g className="art-points">
-              <circle cx="52" cy="80" r="7" />
-              <circle cx="145" cy="47" r="7" />
-              <circle cx="256" cy="87" r="7" />
-              <circle cx="221" cy="161" r="7" />
-              <circle cx="111" cy="160" r="7" />
-            </g>
-          </svg>
-          <span>Discover. Connect. Plan.</span>
-        </div>
-      </div>
+      </section>
       <div className="section-heading overview-heading">
         <div>
           <h2>Analysis at a glance</h2>
