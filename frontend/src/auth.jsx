@@ -12,6 +12,16 @@ import { Notice } from "./ui";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+function callbackErrorMessage() {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  const query = new URLSearchParams(location.search);
+  if (fragment.has("error") || query.has("error"))
+    return "This email link is invalid or has expired. Request a new verification or password reset email.";
+  return "";
+}
+// Capture before the SDK consumes and cleans the callback URL. Never reflect
+// provider-supplied descriptions or retain token/link parameters in app state.
+const initialCallbackError = callbackErrorMessage();
 export const supabase =
   url && key
     ? createClient(url, key, {
@@ -32,7 +42,7 @@ export function AuthProvider({ children }) {
   const [recovery, setRecovery] = useState(
     window.location.pathname === "/reset-password",
   );
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialCallbackError);
   const scope = useRef({ id: null, controller: new AbortController() });
   useEffect(() => {
     try {
@@ -176,6 +186,12 @@ function sendAuthRequest(mode, fields) {
         redirectTo: `${location.origin}/reset-password`,
       }),
     reset: () => supabase.auth.updateUser({ password }),
+    resend: () =>
+      supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: location.origin },
+      }),
   };
   return requests[mode]();
 }
@@ -184,7 +200,7 @@ function authFailureMessage(mode, error_) {
     return "Sign in failed. Check your credentials and email verification, then retry.";
   if (mode === "reset")
     return "This reset link may have expired. Request a new link and try again.";
-  if (mode === "forgot")
+  if (["forgot", "resend"].includes(mode))
     return "Unable to send instructions. Please retry shortly.";
   if (error_.code === "weak_password")
     return "Choose a stronger password with at least 8 characters.";
@@ -198,7 +214,7 @@ export function AuthScreen({
 }) {
   const [mode, setMode] = useState(initialMode),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(message),
+    [error, setError] = useState(() => message || callbackErrorMessage()),
     [feedback, setFeedback] = useState(""),
     [visible, setVisible] = useState(false);
   const titles = {
@@ -207,6 +223,7 @@ export function AuthScreen({
     forgot: "Forgot password",
     reset: "Reset password",
     verify: "Verify your email",
+    resend: "Resend verification",
   };
   function navigate(next) {
     setMode(next);
@@ -228,6 +245,10 @@ export function AuthScreen({
       if (mode === "forgot")
         setFeedback(
           "If an account can receive email, password reset instructions will arrive shortly.",
+        );
+      if (mode === "resend")
+        setFeedback(
+          "If an account needs verification, a new email will arrive shortly. Use the newest link only.",
         );
       if (mode === "reset") {
         setFeedback("Password updated.");
@@ -282,7 +303,7 @@ export function AuthScreen({
                 />
               </label>
             )}
-            {mode !== "forgot" && (
+            {!["forgot", "resend"].includes(mode) && (
               <label>
                 Password
                 <div className="password-control">
@@ -321,7 +342,8 @@ export function AuthScreen({
           {Object.entries(titles)
             .filter(
               ([key]) =>
-                key !== mode && ["signin", "signup", "forgot"].includes(key),
+                key !== mode &&
+                ["signin", "signup", "forgot", "resend"].includes(key),
             )
             .map(([key, title]) => (
               <button

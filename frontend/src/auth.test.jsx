@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   signUp: vi.fn(),
   resetPasswordForEmail: vi.fn(),
   updateUser: vi.fn(),
+  resend: vi.fn(),
 }));
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: mocks }),
@@ -21,6 +22,7 @@ const { AuthScreen } = await import("./auth");
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  history.replaceState(null, "", "/");
 });
 function fill() {
   fireEvent.change(screen.getByLabelText("Email address"), {
@@ -132,4 +134,43 @@ it("restores a session and remounts private state on account switching and logou
   act(() => change("SIGNED_OUT", null));
   expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
   expect(screen.queryByText("private-a")).not.toBeInTheDocument();
+});
+
+it("explains expired email links without reflecting provider error text", () => {
+  history.replaceState(
+    null,
+    "",
+    "/#error=access_denied&error_code=otp_expired&error_description=untrusted-provider-text",
+  );
+  render(<AuthScreen />);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "This email link is invalid or has expired",
+  );
+  expect(screen.queryByText("untrusted-provider-text")).not.toBeInTheDocument();
+  history.replaceState(null, "", "/");
+});
+
+it("requests a fresh verification email with neutral feedback", async () => {
+  mocks.resend.mockResolvedValue({ data: {} });
+  render(<AuthScreen />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Resend verification", exact: true }),
+  );
+  expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Email address"), {
+    target: { value: "account@example.test" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Resend verification", exact: true }),
+  );
+  await waitFor(() =>
+    expect(mocks.resend).toHaveBeenCalledWith({
+      type: "signup",
+      email: "account@example.test",
+      options: { emailRedirectTo: location.origin },
+    }),
+  );
+  expect(
+    await screen.findByText(/If an account needs verification/),
+  ).toBeInTheDocument();
 });
