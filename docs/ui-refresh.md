@@ -1,3 +1,5 @@
+> Historical design/demo notes. For the current nine-page application and verified commands, use [the improvement report](improvement-report.md) and [README](../README.md).
+
 # UI refresh
 
 Historical UI-refresh record. The current GitHub Dark/account design and final screenshots supersede these earlier UI details; see [improvement-report.md](improvement-report.md).

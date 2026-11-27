@@ -3586,6 +3586,8 @@ th {
   .topbar-actions > .button { font-size: 12px; padding-inline: 9px; }
   .topbar-page .breadcrumb > span { display: none; }
 }
+:root { --color-auth-primary: color-mix(in srgb, var(--accent) 75%, black); }
+.auth-card .auth-form > .primary { background: var(--color-auth-primary); }
 /* Breadcrumb and lower page actions without repeated visible page names. */
 .topbar-page { flex-direction: row; align-items: center; }
 .page-header { min-height: 0; margin-bottom: 16px; }

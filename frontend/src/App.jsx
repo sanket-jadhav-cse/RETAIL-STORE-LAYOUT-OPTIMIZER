@@ -201,7 +201,7 @@ function AppShell() {
   const catalogError = needsCatalog && catalog.isError;
   return (
     <div className="app-shell" data-sidebar-collapsed={collapsed}>
-      <a href="#main-content" className="skip-link">
+      <a href="#main-content" className="skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>
         Skip to content
       </a>
       <Sidebar
@@ -237,6 +237,7 @@ function AppShell() {
         </header>
         <main
           id="main-content"
+          tabIndex={-1}
           className={`main-content page-${destinations[screen][1].replaceAll("/", "-")}`}
         >
           <header className={`page-header ${title === name ? "page-header-compact" : ""}`}>

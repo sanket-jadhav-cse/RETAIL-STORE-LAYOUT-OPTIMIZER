@@ -1,3 +1,5 @@
+> Historical design/demo notes. For the current nine-page application and verified commands, use [the improvement report](improvement-report.md) and [README](../README.md).
+
 # Local demo
 
 1. Start the backend and frontend using the [README](../README.md); both use root `.env`. Open http://localhost:5173.

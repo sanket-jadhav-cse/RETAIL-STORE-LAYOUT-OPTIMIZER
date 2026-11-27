@@ -680,3 +680,10 @@ it("resolves the dataset when reopening a saved result URL before navigating to 
   ).toHaveTextContent("Selected source");
   expect(screen.queryByText("200")).not.toBeInTheDocument();
 });
+
+
+it("skips to the current page content without changing hash route or selection", async () => {
+  render(<App/>);await screen.findByText("100");fireEvent.click(screen.getByRole("button",{name:"Datasets",exact:true}));
+  const route=location.hash;fireEvent.click(screen.getByRole("link",{name:"Skip to content"}));
+  expect(location.hash).toBe(route);expect(screen.getByRole("main")).toHaveFocus();expect(screen.getByRole("heading",{level:1})).toHaveTextContent("Datasets");
+});

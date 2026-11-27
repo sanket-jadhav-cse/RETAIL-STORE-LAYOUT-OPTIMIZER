@@ -115,7 +115,12 @@ export default function Sidebar({
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="drawer-overlay" />
+        <Dialog.Overlay
+          className="drawer-overlay"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) onOpenChange(false);
+          }}
+        />
         <Dialog.Content
           className="sidebar mobile-drawer"
           aria-describedby="navigation-description"

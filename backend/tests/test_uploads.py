@@ -311,3 +311,40 @@ def test_workbook_uses_safe_xml_parser():
     from openpyxl.xml.functions import DEFUSEDXML
 
     assert DEFUSEDXML is True
+
+
+def test_shared_dataset_cannot_be_renamed_archived_or_downloaded_as_private(
+    client, store
+):
+    from app.models import Dataset
+
+    with store.begin() as session:
+        dataset = Dataset(
+            name="Protected shared source",
+            source="Shared fixture",
+            version="v1",
+            checksum=uuid4().hex,
+            is_shared=True,
+            basket_count=2,
+            summary={},
+        )
+        session.add(dataset)
+        session.flush()
+        identifier = dataset.dataset_id
+    assert (
+        client.patch(
+            f"/api/v1/datasets/{identifier}", json={"name": "Changed"}
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            f"/api/v1/datasets/{identifier}", json={"processing_status": "Archived"}
+        ).status_code
+        == 403
+    )
+    assert client.get(f"/api/v1/datasets/{identifier}/source").status_code == 403
+    assert (
+        client.get(f"/api/v1/datasets/{identifier}/summary").json()["name"]
+        == "Protected shared source"
+    )

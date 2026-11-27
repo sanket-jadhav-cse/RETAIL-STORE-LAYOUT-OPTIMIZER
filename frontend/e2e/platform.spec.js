@@ -73,7 +73,7 @@ test("nine screens: actual browser captures, dark/light accessibility, selectors
   await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Load a previous run" }).click();
   await expect(dialog).toBeVisible();
-  await page.getByRole("heading", { level: 1 }).click();
+  await page.getByLabel("Search products").click();
   await expect(dialog).toBeHidden();
   await page.getByLabel("Search products").fill("no-product-exists");
   await expect(
@@ -95,6 +95,8 @@ test("nine screens: actual browser captures, dark/light accessibility, selectors
   await page.getByRole("button", { name: "Fit to view", exact: true }).click();
   await page.getByRole("button", { name: "Pan left" }).click();
   await page.getByRole("button", { name: "Reset view" }).click();
+  await page.locator(".graph-edge-group").first().focus();
+  await page.keyboard.press("Space");
   await page.screenshot({
     path: "../docs/screenshots/graph-inspection.png",
     fullPage: true,
@@ -149,6 +151,7 @@ test("all nine screens at six widths, touch navigation, back/forward and table s
       await page
         .getByRole("button", { name: "Open navigation", exact: true })
         .click();
+      await expect(page.getByRole("dialog", {name:"Navigation"})).toBeVisible();
       await page.mouse.click(width - 8, 500);
       await expect(
         page.getByRole("dialog", { name: "Navigation" }),
@@ -204,6 +207,11 @@ test("all nine screens at six widths, touch navigation, back/forward and table s
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "FP-Growth Configuration",
   );
+  const savedHash=await page.evaluate(()=>location.hash);
+  await page.getByRole("link",{name:"Skip to content"}).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+  expect(await page.evaluate(()=>location.hash)).toBe(savedHash);
 });
 
 test("Account cold entry is isolated and profile actions never invalidate analytics", async ({
@@ -235,6 +243,11 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await setup(page, { signedIn: false });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+  await page.waitForTimeout(180);
+  const lightAuth = await new AxeBuilder({page}).withTags(["wcag2a","wcag2aa"]).analyze();
+  expect(lightAuth.violations.map(v => v.id)).toEqual([]);
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
   await page.screenshot({
     animations: "disabled",
     path: "../docs/screenshots/login.png",

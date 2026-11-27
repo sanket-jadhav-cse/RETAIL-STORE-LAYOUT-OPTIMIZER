@@ -100,13 +100,14 @@ const servers = await Promise.all([serve(beforeDir), serve(afterDir)]);
 const results = {
   conditions:
     "Chromium 1672x941, uncompressed production assets, identical aggregate fixture and mocked Auth/API; three samples per page, fresh context per cold entry, same-context return navigation while cache fresh. Timings are browser observations, not real PostgreSQL/Supabase latency.",
-  before: {},
+  before: process.argv.includes("--after-only") && fs.existsSync(output) ? JSON.parse(fs.readFileSync(output,"utf8")).before : {},
   after: {},
 };
 try {
   for (const [phaseIndex, phase] of ["before", "after"].entries())
     for (const [name, oldSlug, newSlug, oldName, newName, kind] of views) {
       if (!oldSlug && phase === "before") continue;
+      if (phase === "before" && process.argv.includes("--after-only")) continue;
       const rows = [];
       for (let sample = 0; sample < 3; sample++) {
         const context = await browser.newContext({
