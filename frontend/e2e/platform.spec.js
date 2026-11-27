@@ -106,17 +106,30 @@ async function setup(page, { signedIn = true } = {}) {
       const q = (params.get("search") || "").toLowerCase();
       const rows = fixture.rules.filter(
         (r) =>
-          !q ||
-          `${r.antecedent_names} ${r.consequent_names}`
-            .toLowerCase()
-            .includes(q),
+          (!q ||
+            `${r.antecedent_names} ${r.consequent_names}`
+              .toLowerCase()
+              .includes(q)) &&
+          r.support >= Number(params.get("min_support") || 0) &&
+          r.confidence >= Number(params.get("min_confidence") || 0) &&
+          r.lift >= Number(params.get("min_lift") || 0),
       );
       const offset = ((Number(params.get("page")) || 1) - 1) * 25;
       data = { items: rows.slice(offset, offset + 25), total: rows.length };
     } else if (path.endsWith("/adjacencies"))
       data = {
-        items: fixture.pairs.slice(0, Number(params.get("page_size")) || 25),
-        total: fixture.pairs.length,
+        items: fixture.pairs
+          .filter(
+            (p) =>
+              Math.max(p.confidence_a_b || 0, p.confidence_b_a || 0) >=
+              Number(params.get("min_confidence") || 0),
+          )
+          .slice(0, Number(params.get("page_size")) || 25),
+        total: fixture.pairs.filter(
+          (p) =>
+            Math.max(p.confidence_a_b || 0, p.confidence_b_a || 0) >=
+            Number(params.get("min_confidence") || 0),
+        ).length,
       };
     else if (path.endsWith("/report"))
       data = {
@@ -259,6 +272,18 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
     .click();
   await expect(page.getByText(/Co-purchased in/)).toBeVisible();
   await page.getByRole("button", { name: "Reset view" }).click();
+  await page
+    .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
+    .fill("1");
+  await expect(
+    page.getByText("No qualifying results", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
+    .fill("0");
+  await expect(
+    page.getByRole("group", { name: "Product adjacency graph" }),
+  ).toBeVisible();
   await navigate(page, "Reports");
   const download = page.waitForEvent("download");
   await page

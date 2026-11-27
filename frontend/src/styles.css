@@ -2297,3 +2297,42 @@ details[open] > summary > .icon {
   stroke-width: 1;
   pointer-events: none;
 }
+.recommendation-table {
+  min-width: 1000px;
+}
+.recommendation-table td:nth-child(2) {
+  min-width: 230px;
+}
+.recommendation-table td:last-child {
+  min-width: 280px;
+  max-width: 420px;
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.advanced-settings {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+}
+.advanced-settings summary {
+  cursor: pointer;
+  margin-bottom: 12px;
+  color: var(--color-text-primary);
+}
+.advanced-settings label {
+  max-width: 420px;
+}
+th .text-button {
+  color: var(--color-text-primary);
+}
+.loading-slot:empty {
+  display: none;
+}
+@media (min-width: 960px) {
+  .topbar {
+    height: 64px;
+  }
+  .main-content {
+    padding: 24px 28px 16px;
+  }
+}

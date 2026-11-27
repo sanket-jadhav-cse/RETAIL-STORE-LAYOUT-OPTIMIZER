@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Icon from "./Icon";
-import Graph, { PairDetails, pct } from "./Graph";
+import Graph, { pct } from "./Graph";
 import { DatasetQuality } from "./Overview";
 import { EmptyResults, Pager, SectionHeading, Notice } from "./ui";
 
@@ -272,33 +272,43 @@ export function MiningScreen({
             </span>
           </label>
           <div className="form-grid">
-            {fields.map(([key, title, min, max, step, help]) => (
-              <label key={key} htmlFor={key}>
-                <span>{title}</span>
-                <input
-                  id={key}
-                  aria-label={title}
-                  name={key}
-                  type="number"
-                  min={min}
-                  max={max}
-                  step={step}
-                  required={key !== "max_itemset_size"}
-                  value={params[key]}
-                  aria-describedby={`${key}-help`}
-                  onChange={(e) =>
-                    setParams({
-                      ...params,
-                      [key]:
-                        e.target.value === "" ? "" : Number(e.target.value),
-                    })
-                  }
-                />
-                <span id={`${key}-help`} className="field-help">
-                  {help}
-                </span>
-              </label>
-            ))}
+            {fields.map(([key, title, min, max, step, help]) => {
+              const field = (
+                <label key={key} htmlFor={key}>
+                  <span>{title}</span>
+                  <input
+                    id={key}
+                    aria-label={title}
+                    name={key}
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    required={key !== "max_itemset_size"}
+                    value={params[key]}
+                    aria-describedby={`${key}-help`}
+                    onChange={(e) =>
+                      setParams({
+                        ...params,
+                        [key]:
+                          e.target.value === "" ? "" : Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span id={`${key}-help`} className="field-help">
+                    {help}
+                  </span>
+                </label>
+              );
+              return key === "max_itemset_size" ? (
+                <details className="advanced-settings" key={key}>
+                  <summary>Advanced settings</summary>
+                  {field}
+                </details>
+              ) : (
+                field
+              );
+            })}
           </div>
           <p className="muted">
             Runs and results are private to your signed-in account.
@@ -386,6 +396,10 @@ export function ResultsScreen({
   setPage,
   search,
   setSearch,
+  support,
+  setSupport,
+  confidence,
+  setConfidence,
   lift,
   setLift,
   sort,
@@ -420,9 +434,9 @@ export function ResultsScreen({
       >
         {view.description}
       </SectionHeading>
-      {screen < 5 && (
+      {
         <div className="results-toolbar">
-          {screen === 3 && (
+          {
             <>
               <label className="search-field">
                 <span>Search products</span>
@@ -436,18 +450,23 @@ export function ResultsScreen({
                   />
                 </div>
               </label>
-              <label>
-                <span>Sort by</span>
-                <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                  {["lift", "support", "confidence"].map((s) => (
-                    <option key={s} value={s}>
-                      {s[0].toUpperCase() + s.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {screen === 3 && (
+                <label>
+                  <span>Sort by</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    {["lift", "support", "confidence"].map((s) => (
+                      <option key={s} value={s}>
+                        {s[0].toUpperCase() + s.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </>
-          )}
+          }
           <label>
             <span>Minimum lift</span>
             <input
@@ -458,8 +477,42 @@ export function ResultsScreen({
               onChange={(e) => setLift(Math.max(0, Number(e.target.value)))}
             />
           </label>
+          {screen === 3 && (
+            <label>
+              Minimum support
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step=".01"
+                value={support}
+                onChange={(e) =>
+                  setSupport(Math.min(1, Math.max(0, Number(e.target.value))))
+                }
+              />
+            </label>
+          )}
+          <label>
+            Minimum confidence
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step=".01"
+              aria-label="Minimum confidence"
+              value={confidence}
+              onChange={(e) =>
+                setConfidence(Math.min(1, Math.max(0, Number(e.target.value))))
+              }
+            />
+            <span className="field-help">
+              {screen === 3
+                ? "Directional confidence"
+                : "Either qualifying direction"}
+            </span>
+          </label>
         </div>
-      )}
+      }
       {!loading && rows?.length === 0 && <EmptyResults />}
       {screen === 3 && rows?.length > 0 && (
         <div
@@ -481,8 +534,28 @@ export function ResultsScreen({
                   "Confidence",
                   "Lift",
                 ].map((h) => (
-                  <th key={h} scope="col">
-                    {h}
+                  <th
+                    key={h}
+                    scope="col"
+                    aria-sort={
+                      ["Support", "Confidence", "Lift"].includes(h) &&
+                      sort === h.toLowerCase()
+                        ? "descending"
+                        : undefined
+                    }
+                  >
+                    {["Support", "Confidence", "Lift"].includes(h) ? (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setSort(h.toLowerCase())}
+                      >
+                        {h}
+                        {sort === h.toLowerCase() ? " ↓" : ""}
+                      </button>
+                    ) : (
+                      h
+                    )}
                   </th>
                 ))}
               </tr>
@@ -492,7 +565,8 @@ export function ResultsScreen({
                 <tr key={r.rule_id}>
                   <td>
                     <span className="product-name">
-                      {r.antecedent_names.join(" + ")}
+                      {r.antecedent_names.join(" + ")}{" "}
+                      <span aria-label="leads to">→</span>
                     </span>
                     <span className="product-code">
                       {r.antecedent.join(", ")}
@@ -518,7 +592,10 @@ export function ResultsScreen({
         </div>
       )}
       {screen === 4 && rows?.length > 0 && (
-        <Graph key={`${runId}-${page}-${lift}`} pairs={rows} />
+        <Graph
+          key={`${runId}-${page}-${lift}-${confidence}-${search}`}
+          pairs={rows}
+        />
       )}
       {screen === 5 && result && (
         <>
@@ -526,6 +603,14 @@ export function ResultsScreen({
             <div>
               <h3>{result.dataset.name || result.dataset.source}</h3>
               <p className="muted">Dataset version {result.dataset.version}</p>
+              <p className="muted">
+                {result.dataset.transaction_start &&
+                result.dataset.transaction_end
+                  ? `${result.dataset.transaction_start} – ${result.dataset.transaction_end} · `
+                  : ""}
+                {result.dataset.basket_count?.toLocaleString()} baskets
+              </p>
+              <p className="muted">{result.run.name}</p>
             </div>
             <button
               type="button"
@@ -558,18 +643,54 @@ export function ResultsScreen({
             <Icon name="info" />
             <p>{result.review}</p>
           </div>
-          <div className="report-pairs">
-            {rows?.map((pair) => (
-              <article key={pair.rank} className="report-pair">
-                <div className="report-pair-top">
-                  <span className="pair-rank">#{pair.rank}</span>
-                  <span className="product-code">
-                    {pair.product_a} / {pair.product_b}
-                  </span>
-                </div>
-                <PairDetails pair={pair} />
-              </article>
-            ))}
+          <div
+            className="table-scroll"
+            role="region"
+            tabIndex="0"
+            aria-label="Scrollable recommendation report"
+          >
+            <table className="recommendation-table">
+              <caption className="sr-only">
+                Ranked product recommendations and supporting evidence
+              </caption>
+              <thead>
+                <tr>
+                  {[
+                    "Rank",
+                    "Product pair",
+                    "Support",
+                    "Confidence A → B",
+                    "Confidence B → A",
+                    "Lift",
+                    "Explanation",
+                  ].map((title) => (
+                    <th scope="col" key={title}>
+                      {title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows?.map((pair) => (
+                  <tr key={pair.rank}>
+                    <td className="numeric">{pair.rank}</td>
+                    <td>
+                      <strong className="product-name">{pair.name_a}</strong>
+                      <span className="muted">↔</span>
+                      <strong className="product-name">{pair.name_b}</strong>
+                      <span className="product-code">
+                        {pair.product_a} / {pair.product_b}
+                      </span>
+                    </td>
+                    <td className="numeric">{pct(pair.support)}</td>
+                    <td className="numeric">{pct(pair.confidence_a_b)}</td>
+                    <td className="numeric">{pct(pair.confidence_b_a)}</td>
+                    <td className="numeric">{pair.lift.toFixed(3)}</td>
+                    <td>{pair.rationale}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

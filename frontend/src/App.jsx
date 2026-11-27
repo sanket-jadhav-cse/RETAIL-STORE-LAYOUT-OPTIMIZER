@@ -52,6 +52,8 @@ export default function App() {
     [search, setSearch] = useState(""),
     [searchQuery, setSearchQuery] = useState(""),
     [lift, setLift] = useState(0),
+    [support, setSupport] = useState(0),
+    [confidence, setConfidence] = useState(0),
     [sort, setSort] = useState("lift"),
     [busy, setBusy] = useState(false),
     [renaming, setRenaming] = useState(false),
@@ -148,7 +150,7 @@ export default function App() {
   }, [search]);
   useEffect(() => {
     setPage(1);
-  }, [screen, runId, searchQuery, lift, sort]);
+  }, [screen, runId, searchQuery, lift, sort, support, confidence]);
   useEffect(() => {
     if (run?.status !== "Completed" || screen < 3 || screen > 5) return;
     const controller = new AbortController();
@@ -163,6 +165,8 @@ export default function App() {
           page_size: 25,
           search: searchQuery,
           min_lift: lift,
+          min_support: support,
+          min_confidence: confidence,
           sort,
         },
         signal: controller.signal,
@@ -177,7 +181,17 @@ export default function App() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [screen, runId, run?.status, page, searchQuery, lift, sort]);
+  }, [
+    screen,
+    runId,
+    run?.status,
+    page,
+    searchQuery,
+    lift,
+    sort,
+    support,
+    confidence,
+  ]);
   useEffect(() => {
     setOverviewPairs(null);
     setOverviewError(false);
@@ -517,6 +531,10 @@ export default function App() {
                 setPage={setPage}
                 search={search}
                 setSearch={setSearch}
+                support={support}
+                setSupport={setSupport}
+                confidence={confidence}
+                setConfidence={setConfidence}
                 lift={lift}
                 setLift={setLift}
                 sort={sort}

@@ -462,3 +462,111 @@ def test_named_history_search_pagination_and_rename(client, store):
         ).json()["total"]
         == 1
     )
+
+
+def test_result_filters_and_csv_formula_safety(client, store):
+    from app.models import AssociationRule
+
+    with store.begin() as session:
+        dataset = Dataset(
+            name="Filter Test",
+            source="TEST",
+            version="v1",
+            checksum=uuid.uuid4().hex,
+            basket_count=100,
+            summary={},
+            is_shared=True,
+        )
+        session.add(dataset)
+        session.flush()
+        session.add_all(
+            [
+                Product(
+                    dataset_id=dataset.dataset_id,
+                    product_code="A",
+                    description='  =HYPERLINK("bad")',
+                ),
+                Product(
+                    dataset_id=dataset.dataset_id, product_code="B", description="Bread"
+                ),
+            ]
+        )
+        run = MiningRun(
+            dataset_id=dataset.dataset_id,
+            owner_id=uuid.UUID(int=1),
+            name="Filter analysis",
+            min_support=0.02,
+            min_confidence=0.5,
+            min_lift=1,
+            status="Completed",
+        )
+        session.add(run)
+        session.flush()
+        run_id = str(run.run_id)
+        session.add(
+            AssociationRule(
+                run_id=run.run_id,
+                antecedent=["A"],
+                consequent=["B"],
+                support=0.2,
+                confidence=0.6,
+                lift=1.5,
+            )
+        )
+        session.add(
+            Adjacency(
+                run_id=run.run_id,
+                dataset_id=dataset.dataset_id,
+                product_a="A",
+                product_b="B",
+                rank=1,
+                support=0.2,
+                confidence_a_b=0.6,
+                confidence_b_a=None,
+                lift=1.5,
+                rationale="\n=Unsafe explanation",
+            )
+        )
+    root = f"/api/v1/runs/{run_id}"
+    assert (
+        client.get(root + "/rules", params={"search": "no-matching-product"}).json()[
+            "total"
+        ]
+        == 0
+    )
+    assert client.get(root + "/rules", params={"min_support": 0.3}).json()["total"] == 0
+    assert (
+        client.get(root + "/rules", params={"min_confidence": 0.7}).json()["total"] == 0
+    )
+    assert (
+        client.get(
+            root + "/adjacencies", params={"search": "Bread", "min_confidence": 0.6}
+        ).json()["total"]
+        == 1
+    )
+    assert (
+        client.get(root + "/adjacencies", params={"min_confidence": 0.7}).json()[
+            "total"
+        ]
+        == 0
+    )
+    assert (
+        client.get(root + "/report", params={"search": "no-match"}).json()[
+            "recommendations"
+        ]["total"]
+        == 0
+    )
+    assert (
+        client.get(root + "/report", params={"search": "Bread"}).json()[
+            "recommendations"
+        ]["total"]
+        == 1
+    )
+    assert client.get(root + "/rules?min_support=2").status_code == 422
+    assert client.get(root + "/adjacencies?min_confidence=nan").status_code == 422
+    import csv
+    import io
+
+    row = next(csv.DictReader(io.StringIO(client.get(root + "/report.csv").text)))
+    assert row["name_a"].startswith("'  =")
+    assert row["rationale"].startswith("'\n=")
