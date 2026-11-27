@@ -212,24 +212,18 @@ function AppShell() {
         collapsed={collapsed}
         open={menuOpen}
         onOpenChange={setMenuOpen}
+        onCollapse={() => setCollapsed(!collapsed)}
       />
       <div className="workspace">
         <header className="topbar">
-          <button
-            type="button"
-            className="icon-button desktop-sidebar-toggle"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <Icon name="menu" />
-          </button>
-          <div className="topbar-actions">
+          <div className="topbar-page">
             <div className="breadcrumb">
               <span>Workspace</span>
               <span aria-hidden="true">/</span>
               <strong>{name}</strong>
             </div>
+          </div>
+          <div className="topbar-actions">
             <button
               type="button"
               className="icon-button"
@@ -245,13 +239,11 @@ function AppShell() {
           id="main-content"
           className={`main-content page-${destinations[screen][1].replaceAll("/", "-")}`}
         >
-          <header className="page-header">
-            <div>
-              <h1 ref={heading} tabIndex="-1">
-                {title}
-              </h1>
-            </div>
-            {action && (
+          <header className={`page-header ${title === name ? "page-header-compact" : ""}`}>
+            <h1 ref={heading} tabIndex="-1" className={title === name ? "sr-only" : undefined}>
+              {title}
+            </h1>
+            {action && ![0, 1, 2].includes(screen) && (
               <button
                 key={screen}
                 type="button"
