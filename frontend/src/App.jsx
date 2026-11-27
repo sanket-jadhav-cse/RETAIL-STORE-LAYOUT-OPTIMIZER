@@ -215,42 +215,15 @@ function AppShell() {
       />
       <div className="workspace">
         <header className="topbar">
-          <button
-            type="button"
-            className="icon-button desktop-sidebar-toggle"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-expanded={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            <Icon name="menu" />
-          </button>
-          <div className="topbar-actions">
+          <div className="topbar-page">
             <div className="breadcrumb">
               <span>Workspace</span>
               <span aria-hidden="true">/</span>
               <strong>{name}</strong>
             </div>
-            <button
-              type="button"
-              className="icon-button"
-              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-              onClick={toggleTheme}
-            >
-              <Icon name={theme === "light" ? "moon" : "sun"} />
-            </button>
-            <UserMenu onAccount={() => navigate(8)} />
+            <h1 ref={heading} tabIndex="-1">{title}</h1>
           </div>
-        </header>
-        <main
-          id="main-content"
-          className={`main-content page-${destinations[screen][1].replaceAll("/", "-")}`}
-        >
-          <header className="page-header">
-            <div>
-              <h1 ref={heading} tabIndex="-1">
-                {title}
-              </h1>
-            </div>
+          <div className="topbar-actions">
             {action && (
               <button
                 key={screen}
@@ -262,7 +235,30 @@ function AppShell() {
                 {action[0]}
               </button>
             )}
-          </header>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+              onClick={toggleTheme}
+            >
+              <Icon name={theme === "light" ? "moon" : "sun"} />
+            </button>
+            <UserMenu onAccount={() => navigate(8)} />
+            <button
+              type="button"
+              className="icon-button desktop-sidebar-toggle"
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              aria-expanded={!collapsed}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <Icon name="menu" />
+            </button>
+          </div>
+        </header>
+        <main
+          id="main-content"
+          className={`main-content page-${destinations[screen][1].replaceAll("/", "-")}`}
+        >
           <div className="page-content">
             {screen === 0 && runQuery.isError && (
               <QueryError query={runQuery} />
