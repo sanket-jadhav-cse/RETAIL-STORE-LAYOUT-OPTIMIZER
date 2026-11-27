@@ -1,30 +1,59 @@
-# Deployment runbook
+# Deployment and operations
 
-The local app and existing Supabase project are verified. No Render/Vercel deployment, paid infrastructure or public production certification was performed. Review [current evidence and remaining owner actions](improvement-report.md) before publication.
+No public deployment, paid resource provisioning, Git commit, push or PR was performed for this change.
 
-## One local environment
+## Existing installation
 
-Use **repository-root `.env`**, based on [.env.example](../.env.example). It is ignored and should be mode 0600. Backend/migrations and Vite read this file independently of the startup directory. Old `backend/.env`, `backend/.env.runtime` and `frontend/.env.local` are no longer active. Existing values were preserved in ignored, private migration backups; do not commit those backups.
+Preserve root `.env`, restricted runtime role, accounts, dataset metadata, source/basket files and mining history. Do not reset Supabase, recreate tables or rerun initial role provisioning.
 
-Required local settings: runtime `DATABASE_URL` with Session Pooler TLS, `SUPABASE_URL`, public `SUPABASE_PUBLISHABLE_KEY`, `API_BASE_URL`, and exact `CORS_ALLOWED_ORIGINS`. Keep `MIGRATION_DATABASE_URL` only on a trusted local migration machine. Configure connection/mining/reconnect limits through the root example. Ordinary users authenticate with Supabase accounts; the historical operator token is not an application login credential.
+```bash
+cd backend
+../.venv/bin/alembic current
+../.venv/bin/alembic upgrade head
+```
 
-Vite disables automatic prefix exposure and projects only API URL, public project URL and public publishable/anon key. It rejects `sb_secret_` and legacy service-role JWT keys in that public setting. Server settings also reject privileged Auth API keys without echoing their values. Never place database URLs, owner credentials or privileged Supabase keys in browser variables.
+Migration 006 is additive: nullable mining submission identity and a partial unique index. Its migration/RLS preservation test runs transactionally in an isolated schema before application. Existing database was advanced to 006; record fingerprints were checked across a graceful local restart.
 
-## Supabase Auth
+## Configuration
 
-1. Enable email/password Auth in the existing project. Use ES256/RS256 signing keys; this project's ES256 JWKS and live access-token verification were checked.
-2. Authentication → URL Configuration: local Site URL `http://localhost:5173`; allow `http://localhost:5173/**`. Add the exact intended HTTPS production origin and reset-password route before deploying. Keep preview origins deliberately scoped.
-3. The project still redirected a verification link to `localhost:3000` during testing. The owner must confirm the dashboard URL/allowlist change; public keys and database passwords cannot administer this hosted setting.
-4. Signup requires inbox verification. Password reset requests have neutral responses, use the SDK's recovery session and update the password through Supabase. Use the newest email link; expired links offer resend/recovery guidance.
-5. Configure suitable production email delivery/rate limits in Supabase and verify actual reset/verification round trips over HTTPS. Do not disable email verification to make tests pass. There is no shared account password.
+Use the root [.env.example](../.env.example). Keep the runtime `DATABASE_URL` restricted, TLS-enabled and compatible with the Supabase Session Pooler. Only trusted migration tooling receives `MIGRATION_DATABASE_URL`. Never install owner URLs or service-role keys in frontend settings.
 
-Live signup, verified login, refresh restoration, authenticated data access and a full-data mining submission were verified locally. Two-account isolation is verified in disposable database/API tests; a second live verified Supabase account and a complete live reset-link round trip remain separate checks.
+Public frontend values: API origin, Supabase project URL and publishable/anon key. Vite exposes only that allowlist. Production requires rebuilding after configuration changes. Local development proxies the default localhost API through Vite, avoiding a separate browser-to-WSL API connection.
 
-## Existing database and new installations
+Server: one application worker/instance, 5 pool connections with zero overflow by default, pool pre-ping/recycle/timeouts, explicit transaction cleanup and bounded scheduler reconnect. Budget for connections held by the scheduler and mining child. Do not scale replicas while relying on this single scheduler design.
 
-**Existing project: preserve its schema, records and current runtime role.** Do not reset Supabase, recreate tables or rotate database credentials automatically. Three legacy runs remain ownerless/restricted; assign them only after explicit owner identification or a separately reviewed demonstration policy.
+## Start locally
 
-For a new installation only:
+```bash
+cd backend
+../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
+```
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open `http://localhost:5173`. Health is available through `http://localhost:5173/api/v1/health`. A protected request without a session returns 401. If the backend stops, restart it and use the affected page's Retry action. Run the backend under a process supervisor in a deployed environment.
+
+## Artifact durability and cleanup
+
+Mount **private persistent `DATA_DIR`** for baskets and retained uploaded sources. Back up database and files together. The default repository path is suitable for local work; a disposable container directory is not a production storage plan.
+
+No Supabase Storage bucket or paid volume was created. Private Supabase Storage is a viable alternative only after reviewing bucket RLS, authorized worker reads, lifecycle/cleanup and cost. Current deployment requires an operator-provided durable volume.
+
+Review abandoned uploads:
+
+```bash
+.venv/bin/python backend/scripts/cleanup_uploads.py
+```
+
+The command is a dry run. Its explicit `--apply` removes only upload remnants older than 24 hours whose generated checksums are absent from dataset records. It preserves referenced data and ordinary UCI/import artifacts. Do not manually remove files referenced by mining runs. Archive datasets instead of deleting historical dependencies.
+
+Upload defaults and resource limits are documented in README and architecture. Preview validates bounded sample rows; final processing validates the complete bounded input. CSV/XLSX are supported; formulas/macros, encrypted/multi-sheet workbooks and oversized content are rejected. Interrupted uploads can be retried with the same file/mapping without duplicate datasets.
+
+## New installation only
+
+These commands are **not** required for the existing project:
 
 ```bash
 .venv/bin/python backend/scripts/setup_env.py
@@ -38,31 +67,18 @@ cd ..
 .venv/bin/python backend/scripts/import_dataset.py 'data/raw/Online Retail.xlsx'
 ```
 
-The setup CLI prompts for project-specific details, never echoes the database password and URL-encodes it. New role setup requires the owner connection, refuses to change an existing role's password, stages the runtime URL in root `.env`, and activation preserves the migration URL locally. Migrations use the owner connection; production uses the restricted runtime connection. RLS augments backend ownership checks. Keep `retail` outside exposed Data API schemas; do not grant anon/authenticated direct table access.
+The setup tools prompt locally and refuse to overwrite an existing runtime role's password. The UCI importer recognizes verified content checksum, preserves provenance on repair and never requires replacing existing data. Retain matching basket artifacts when moving hosts.
 
-Custom controlled imports require meaningful names and an explicit owner or reviewed shared flag. They calculate their own dates/counts. Repeating a checksum import is idempotent; rebuilding an absent basket artifact preserves verified custom provenance. PostgreSQL metadata alone is insufficient for mining on a new host: retain or regenerate its matching checksum-named artifact.
+## Prepared hosting configuration
 
-## Render API
+The existing Render/Vercel configuration remains preparation only. Build the API with Python 3.12 and the pinned lockfile; build the frontend with `npm ci` and `npm run build`. Run one Uvicorn worker. Configure exact HTTPS CORS origins, Supabase Site URL and reset/verification redirect allowlists. Preserve the existing SPA rewrite for `/reset-password`.
 
-- Root `backend`; Python 3.12. Build `pip install -r requirements.lock && pip install --no-deps .`.
-- Start `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --no-access-log`.
-- Provide runtime `DATABASE_URL`, `SUPABASE_URL`, public `SUPABASE_PUBLISHABLE_KEY`, exact HTTPS `CORS_ALLOWED_ORIGINS`, and persistent `DATA_DIR`. Never install the migration/owner URL on the web service.
-- Defaults: six submissions/account/hour, one active mining job, 300-second mining watchdog, 2048 MiB address-space cap, five pool connections/zero overflow per process. Configure within hosting/Supabase limits; include the child process in connection budgeting.
-- Full-data child RSS now measures about 307 MiB in fresh pipeline benchmarks and 323 MiB with isolated persistence; sampled backend+child about 389–396 MiB. These are local measurements, not a guarantee that a 512 MiB host can run safely. Import, OS, shared pages, simultaneous API traffic and address-space limits require target-host profiling.
-- `render.yaml` declares settings without choosing a paid plan or provisioning storage. Persistent storage and hosting publication require owner authorization.
-- Use one application instance/worker. Advisory locks prevent competing schedulers; use stop-before-start updates. Interrupted jobs remain Failed for explicit resubmission. Temporary DB loss triggers bounded lock-safe reconnect; it does not provide a durable queue or automatic job replay.
-- Configure platform HTTPS, request/rate limits, monitoring and backups before public access. No public dataset upload endpoint exists.
+The measured local combined backend/pipeline RSS is not a target-host memory guarantee. Import parsing, simultaneous requests, OS memory and shared pages require host-specific profiling. Select capacity and any paid storage only with owner authorization.
 
-## Vercel frontend
+## Verification and rollback
 
-Root `frontend`; Node 22.12+; `npm ci`, `npm run build`, output `dist`. Provide public `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` through hosting environment settings (canonical unprefixed equivalents also work). Rebuild after changes; no private settings belong there. Add that exact HTTPS origin to backend CORS and Supabase Auth redirects.
+Backend tests use a disposable PostgreSQL database; browser upload tests additionally require loopback database-creation permission. The test launcher creates only a random `retailatlas_e2e_*` database and removes its own data. It overrides authentication only in the test process and is never the production entry point.
 
-`frontend/vercel.json` includes a SPA rewrite so `/reset-password` reaches the app, following [Vercel's Vite SPA documentation](https://vercel.com/docs/frameworks/frontend/vite#using-vite-to-make-spas). Hosting routing and HTTPS email callbacks are prepared, not deployed/verified.
+Keep prior source/builds and database/file backups. Roll back application source without destructive schema downgrades; interrupted mining jobs remain Failed for explicit resubmission. No automatic replay occurs.
 
-## Verification, rollback and credentials
-
-Use a disposable PostgreSQL database for both test DB URL variables. Tests create unique schemas/roles and roll back/remove only their own fixtures. Do not run destructive checks against application data. Live browser credentials come from `E2E_EMAIL` / `E2E_PASSWORD`; each workflow creates one private run and respects the account limit. `smoke.py --run-id UUID` performs authenticated read checks with `RETAIL_ACCESS_TOKEN`; `--create-run` explicitly creates one run. Output defaults to ignored evidence, preserving historical evaluation files.
-
-Back up PostgreSQL and basket artifacts before migrations. Retain previous source/builds; never roll back by dropping application tables. CI presently has an external GitHub account billing block; fresh passing remote checks remain required. The owner has merged feature PRs, and a final integration PR reconciles missing follow-ups against main without rewriting history. No automatic deployment or merge is performed by this work.
-
-Credentials disclosed in chat require owner-led rotation/revocation, including the privileged Supabase key and previously supplied database/GitHub credentials. The privileged API key and chat PAT were not used. Update root/hosting environment settings safely after rotation; do not publish credentials in screenshots, README or logs.
+Remaining external verification: second live Supabase account, real verification/reset email round trips, hosted HTTPS/CORS/email routing, durable host storage, restart/load/capacity checks and public deployment. Existing historical remote CI billing limitations are outside this local verification.

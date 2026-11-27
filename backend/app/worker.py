@@ -52,6 +52,7 @@ def run_job(run_id):
         )
         run.itemsets = result["itemsets"]
         run.execution = dict(
+            started_at=run.execution.get("started_at"),
             itemset_count=len(result["itemsets"]),
             rule_count=len(result["rules"]),
             adjacency_count=len(result["adjacencies"]),
@@ -163,6 +164,7 @@ class Runner:
                     if not run:
                         continue
                     run.status = "Running"
+                    run.execution = {"started_at": now().isoformat()}
                     run_id = run.run_id
                 child = multiprocessing.get_context("spawn").Process(
                     target=execute, args=(str(run_id),)

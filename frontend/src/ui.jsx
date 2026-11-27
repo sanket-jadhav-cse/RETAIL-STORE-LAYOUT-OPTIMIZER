@@ -1,4 +1,33 @@
 import Icon from "./Icon";
+import { errorMessage } from "./api";
+export function PageSkeleton() {
+  return (
+    <div className="page-skeleton" role="status" aria-label="Loading page">
+      <div className="skeleton skeleton-bar" />
+      <div className="skeleton-metrics">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <div key={n} className="skeleton" />
+        ))}
+      </div>
+      <div className="skeleton skeleton-table" />
+      <span className="sr-only">Loading page…</span>
+    </div>
+  );
+}
+export function QueryError({ query }) {
+  return (
+    <Notice kind="error" title="We couldn’t complete that request">
+      {errorMessage(query.error)}{" "}
+      <button
+        className="text-button"
+        type="button"
+        onClick={() => query.refetch()}
+      >
+        Retry
+      </button>
+    </Notice>
+  );
+}
 export function Status({ status }) {
   return (
     <span className={`status status-${(status || "idle").toLowerCase()}`}>

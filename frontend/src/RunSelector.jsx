@@ -1,11 +1,15 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { api, errorMessage, runPath } from "./api";
 import { Popover } from "./overlays";
 import { Notice, Pager, Status } from "./ui";
 import Icon from "./Icon";
+import { useResource } from "./queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "./auth";
 
 export default function RunSelector({
   selectedId,
+  selectedName,
   onSelect,
   datasets = [],
   refresh = 0,
@@ -18,13 +22,18 @@ export default function RunSelector({
     [dataset, setDataset] = useState(""),
     [date, setDate] = useState(""),
     [page, setPage] = useState(1),
-    [result, setResult] = useState(null),
-    [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0),
     [active, setActive] = useState(0),
     [selecting, setSelecting] = useState(false);
   const listId = useId();
+  const client = useQueryClient(),
+    scope = useAuth()?.user?.id || "isolated-test";
+  const selection = useRef(null);
+  useEffect(() => () => selection.current?.abort(), []);
+  useEffect(() => {
+    if (!open && !inline) selection.current?.abort();
+  }, [open, inline]);
   useEffect(() => {
     const timer = setTimeout(() => {
       setQuery(search);
@@ -32,52 +41,53 @@ export default function RunSelector({
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+  const createdBefore = date
+    ? new Date(new Date(`${date}T00:00:00Z`).getTime() + 86400000).toISOString()
+    : undefined;
+  const history = useResource(
+    ["runs", "selector", refresh, retry],
+    "/runs",
+    {
+      search: query,
+      page,
+      page_size: 10,
+      status: status || undefined,
+      dataset_id: dataset || undefined,
+      created_from: date ? `${date}T00:00:00Z` : undefined,
+      created_before: createdBefore,
+    },
+    { enabled: open || inline },
+  );
+  const result = history.data,
+    loading = history.isFetching;
+  useEffect(() => setActive(0), [query, status, dataset, date, page]);
   useEffect(() => {
-    if (!open && !inline) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError("");
-    setActive(0);
-    let created_before;
-    if (date) {
-      const day = new Date(`${date}T00:00:00Z`);
-      day.setUTCDate(day.getUTCDate() + 1);
-      created_before = day.toISOString();
-    }
-    api
-      .get("/runs", {
-        params: {
-          search: query,
-          page,
-          page_size: 10,
-          status: status || undefined,
-          dataset_id: dataset || undefined,
-          created_from: date ? `${date}T00:00:00Z` : undefined,
-          created_before,
-        },
-        signal: controller.signal,
-      })
-      .then(({ data }) => {
-        if (!controller.signal.aborted) setResult(data);
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(errorMessage(e));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [open, inline, query, status, dataset, date, page, retry, refresh]);
+    if (active >= (result?.items?.length || 0)) setActive(0);
+  }, [active, result?.items?.length]);
+  const historyError = history.isError ? errorMessage(history.error) : "";
   async function select(run) {
-    if (selecting || loading) return;
+    if (!run || selecting || loading) return;
     setSelecting(true);
     setError("");
+    const controller = new AbortController();
+    selection.current?.abort();
+    selection.current = controller;
     try {
-      const { data } = await api.get(runPath(run.run_id));
+      const data = await client.fetchQuery({
+        queryKey: [scope, "run", run.run_id, {}],
+        queryFn: async ({ signal }) =>
+          (
+            await api.get(runPath(run.run_id), {
+              signal: AbortSignal.any([signal, controller.signal]),
+            })
+          ).data,
+        staleTime: 30000,
+      });
+      if (controller.signal.aborted) return;
       await onSelect(data);
       setOpen(false);
     } catch (e) {
-      setError(errorMessage(e));
+      if (!controller.signal.aborted) setError(errorMessage(e));
     } finally {
       setSelecting(false);
     }
@@ -102,7 +112,7 @@ export default function RunSelector({
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      void select(rows[active]);
+      void select(rows[active] || rows[0]);
     }
   }
   const content = (
@@ -163,9 +173,9 @@ export default function RunSelector({
           />
         </label>
       </div>
-      {error && (
+      {(error || historyError) && (
         <Notice kind="error">
-          {error}
+          {error || historyError}
           <button
             type="button"
             className="text-button"
@@ -249,9 +259,13 @@ export default function RunSelector({
       className="run-selector"
       label="Load a previous run"
       trigger={
-        <button type="button" className="button secondary">
+        <button
+          type="button"
+          className="button secondary"
+          aria-label="Load a previous run"
+        >
           <Icon name="clock" />
-          Load a previous run
+          {selectedName || "Load a previous run"}
           <Icon name="chevron" />
         </button>
       }

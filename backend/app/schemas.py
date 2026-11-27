@@ -54,6 +54,22 @@ class DatasetOut(BaseModel):
     imported_at: datetime
     summary: dict
     latest_run_id: UUID | None = None
+    is_shared: bool = False
+    checksum: str | None = None
+
+
+class DatasetUpdate(BaseModel):
+    name: Annotated[str | None, Field(min_length=1, max_length=200)] = None
+    processing_status: Annotated[str | None, Field(pattern="^Archived$")] = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value):
+        if value is not None:
+            value = value.strip()
+            if not value or any(unicodedata.category(c).startswith("C") for c in value):
+                raise ValueError("Use a printable dataset name")
+        return value
 
 
 class RunOut(RunInput):

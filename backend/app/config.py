@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     database_statement_timeout_ms: int = Field(default=30000, ge=1000, le=120000)
     database_lock_timeout_ms: int = Field(default=5000, ge=100, le=30000)
     scheduler_reconnect_max_seconds: int = Field(default=30, ge=1, le=60)
+    upload_max_bytes: int = Field(default=50 * 1024**2, ge=1024, le=100 * 1024**2)
+    upload_max_rows: int = Field(default=600000, ge=2, le=1000000)
+    upload_timeout_seconds: int = Field(default=120, ge=5, le=300)
+    upload_memory_mb: int = Field(default=2048, ge=512, le=4096)
 
     @field_validator("supabase_publishable_key")
     @classmethod

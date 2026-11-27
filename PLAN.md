@@ -1,3 +1,67 @@
+# Screenshot-driven nine-page implementation — active 2026-11-27
+
+This ledger supersedes historical completion/publication permissions below. **No commits, pushes, PRs, paid provisioning, or public deployment.** Existing records and FP-Growth semantics are preserved.
+
+| Work | Status | Acceptance / evidence |
+|---|---|---|
+| Inspect source, schema, migrations, Auth, worker, tests and PRD | Completed | 12-page `/mnt/c/Users/sj546/Downloads/prd.pdf`; complete module inventory; existing seven-destination shell |
+| Inspect all approved references | Completed | `img1.png` through `img15.png` in Downloads; all RetailAtlas, English; mapping below |
+| Baseline screenshots, tests, build and measurements | Completed | Actual Chromium captures and isolated PostgreSQL benchmark in `test-results/redesign/before`; retain results before source changes |
+| Nine routes, reusable shell and page ownership | Completed | Exactly eight workspace links plus Account; legacy #mining preserved; no global feature controls |
+| Server state and request performance | In Progress | TanStack Query, scoped keys, abort, cache, lazy pages, terminal polling stop; Account zero dataset/run calls |
+| CSV/XLSX upload, mapping, storage, dataset actions | Completed | Bounded content validation, private durable DATA_DIR, atomic writes, owner scoped duplicates; no paid storage |
+| Configuration / execution split | Completed | Persist request then navigate; truthful lifecycle; searchable paginated history; retry and duplicate protection |
+| Compact overview / rules / reports | Completed | Five KPIs; actual top three; recent table; run-only results context; one toolbar; complete CSV semantics |
+| Connected graph layout and interaction | In Progress | Actual undirected pairs, readable labels, connected groups, zoom/pan/fit/keyboard, explicit total/matching/displayed |
+| Profile / security / preferences | Completed | Account-only API; real profile; password reset, signout, theme/sidebar |
+| Backend regressions / isolated migrations / correctness | In Progress | Two identities, uploads, persistence, queue/restart, independent synthetic metrics, UCI baseline |
+| Browser / responsive / accessibility / screenshots | In Progress | Nine routes at six widths; actual browser workflows and sanitized captures; distinguish fixture/live evidence |
+| Review / benchmarks / audits / documentation | In Progress | Repeat comparable measurements; production build; update README, architecture, deployment, final/improvement reports |
+| Live email round trip / second live verified account | Blocked | No inbox access or second account credentials available in this task; isolated identity tests continue |
+| Public deployment | Pending | Outside authorized scope; no publication performed |
+
+## Screenshot-to-page mapping
+
+| Reference | Page / visual requirements |
+|---|---|
+| img1 | Overview: compact header and dataset control, five KPIs, quality left / top pairs right, recent runs table |
+| img2 | Datasets: catalog left, provenance/metrics/quality right, Upload and Start Mining actions |
+| img3 | Dataset Upload: four-step staged form, name/description/dropzone left, requirements/examples right |
+| img4 | Mining Configuration: grouped dataset/name/three thresholds/advanced form, compact guide right |
+| img5 | Mining Execution: selected job and summary, filtered compact history below |
+| img6 | Association Rules: run context, aligned toolbar, directional table and pagination |
+| img7 | Product Relationship Map: context/counts/toolbar, connected graph left / details right |
+| img8 | Reports: run context and thresholds, aligned filters, ranked evidence table, one export |
+| img9 / img12 | Upload variant and processing feedback (identical references); do not duplicate catalog or fake queues |
+| img10 | Upload variant with format guide; catalog remains on Datasets |
+| img11 | Account profile: compact profile/security/preferences columns; no analytics queries or fake activity |
+| img13 | Account preferences visual vocabulary; implement actual theme/sidebar only |
+| img14 | Account security visual vocabulary; preserve working password reset; no unsupported MFA/sessions |
+| img15 | Login: RetailAtlas dark identity, bounded form; no unsupported OAuth buttons |
+
+## Architecture and workflows
+
+Preserve React/JavaScript/hash routing, FastAPI, SQLAlchemy/Alembic/Supabase and bounded mining child. Shared shell, semantic tokens, Radix overlays, query provider, scoped data hooks, DatasetSelector/RunSelector, compact tables, page skeletons, local errors. Stable hashes: `#overview`, `#datasets`, `#datasets/upload`, `#mining/configuration`, `#mining/execution`, `#rules`, `#layout`, `#reports`, `#account` (accept optional leading slash).
+
+Upload: select → bounded validation/preview → explicit canonical mapping → processing → Ready/result navigation. Invoice/product/quantity required; Description/date/price/country optional; no CustomerID requirement. Owner-scoped content identity, safe storage names, atomic basket/source publication and dependency-safe archive. Local private persistent DATA_DIR is supported; Supabase Storage evaluated without provisioning costs. Deployment requires a mounted durable volume or separately approved storage setup.
+
+Mining: ready dataset → finite backend-validated thresholds → idempotent persisted submission → execution route → actual Queued/Running/Completed/Failed. Preserve one active job, advisory lock, timeout/memory cap, restart failure recovery; no invented percentages or queue positions. Add non-destructive idempotency metadata only if needed; test migration isolated before existing database.
+
+## Benchmarks and verification
+
+Capture baseline and repeat: configured bundle bytes; per-page cold/warm request counts/DOM timing; query counts/EXPLAIN in unique disposable schemas; UCI pipeline execution/digest/RSS; synthetic upload/preprocessing and persisted metrics. Separate offline browser fixtures from live backend and remote latency. Report unmeasured values explicitly; no invented percentages. Regression tests target confirmed ownership, mapping, request isolation, stale-result, queue, filtering and graph defects. Run existing tests and adapt navigation assertions to the new required routes while preserving behavioral coverage.
+
+## Risks and corrections
+
+Generated references contain inconsistent counts, thresholds, dates, unsupported account/MFA/OAuth controls, false graph categories/edges, fake progress/ETA, and duplicated active navigation. Actual persisted data and implemented features override those elements. Do not copy personal screenshot emails. Existing DATA_DIR is local: durable only when deployment persists it. Hosted Auth email/allowlist verification remains external. Supabase schema is never reset; original UCI artifacts and records are never replaced.
+
+
+Verification checkpoint: initial 39 backend / 35 frontend / 4 browser tests and build passed before edits. Expanded backend 48 passed; frontend 38 passed. Real PostgreSQL API + worker Playwright CSV and XLSX workflows plus invalid-file case: 3 passed. All nine pages/six widths and Account isolation passed; final accessibility repeat follows fixes for low-contrast rank text and route-action color interpolation. Migration 006 tested in isolated transaction and applied additively; existing UCI metadata and both 358/52/38 and 358/44/33 configurations verified. Local API interruption reproduced; detached loopback backend restarted and Vite same-origin proxy health/401 checked. No credentials, records, original artifacts, commits or publication changed.
+
+---
+
+# Historical implementation ledger (superseded for current scope)
+
 # Current completion ledger — 2026-11-27
 
 This ledger supersedes the historical operator/public-read notes below. Preserve existing source/data/history; no deployment or automatic merge is authorized. The owner authorized focused branches, one-line commits and PR publication.

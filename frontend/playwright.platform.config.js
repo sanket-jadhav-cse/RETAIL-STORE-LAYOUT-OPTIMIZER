@@ -2,9 +2,14 @@ import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "platform.spec.js",
+  outputDir: "../test-results/redesign/platform-playwright",
   workers: 1,
   timeout: 90000,
-  use: { baseURL: "http://localhost:5174", headless: true, screenshot: "only-on-failure" },
+  use: {
+    baseURL: "http://localhost:5174",
+    headless: true,
+    screenshot: "only-on-failure",
+  },
   expect: { timeout: 10000 },
   webServer: {
     command:

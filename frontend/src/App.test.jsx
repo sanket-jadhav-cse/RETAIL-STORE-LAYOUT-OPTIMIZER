@@ -19,6 +19,9 @@ const RUN_ID = "00000000-0000-4000-8000-000000000001";
 const dataset = {
   dataset_id: "d1",
   version: "UCI 2011",
+  name: "Test retail dataset",
+  processing_status: "Ready",
+  imported_at: "2026-01-01T00:00:00Z",
   basket_count: 100,
   source: "UCI",
   summary: {
@@ -42,9 +45,11 @@ it("loads actual dashboard values and navigates all screens", async () => {
   expect(screen.getByText("3")).toBeInTheDocument();
   for (const name of [
     "Datasets",
-    "Mining",
+    "Dataset Upload",
+    "Mining Configuration",
+    "Mining Execution",
     "Association Rules",
-    "Product Layout",
+    "Product Relationship Map",
     "Reports",
   ]) {
     fireEvent.click(screen.getByRole("button", { name, exact: true }));
@@ -60,9 +65,11 @@ it("shows empty, loading and failure states", async () => {
       }),
   );
   render(<App />);
-  expect(screen.getByText("Loading data…")).toBeInTheDocument();
+  expect(
+    screen.getByRole("status", { name: "Loading page" }),
+  ).toBeInTheDocument();
   resolve({ data: [] });
-  await screen.findByText(/No dataset imported/);
+  await screen.findByText(/Upload a CSV or XLSX file to begin/);
   cleanup();
   api.get.mockRejectedValue(new Error("offline"));
   render(<App />);
@@ -79,7 +86,9 @@ it("submits thresholds through the authenticated API client", async () => {
   });
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mining Configuration", exact: true }),
+  );
   expect(screen.getByLabelText("Minimum support")).toHaveAttribute(
     "min",
     "0.0001",
@@ -89,6 +98,11 @@ it("submits thresholds through the authenticated API client", async () => {
     expect(api.post).toHaveBeenCalledWith(
       "/runs",
       expect.objectContaining({ min_support: 0.02, dataset_id: "d1" }),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Idempotency-Key": expect.any(String),
+        }),
+      }),
     ),
   );
   expect(window.localStorage.getItem("token")).toBeNull();
@@ -132,14 +146,14 @@ it("renders rules and report responses", async () => {
     }),
   );
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
   fireEvent.click(screen.getByRole("button", { name: "Reports", exact: true }));
-  await screen.findByText("Review feasibility");
+  await screen.findByText(/Conceptual adjacency supports/);
 });
 it("inspects graph evidence and resets zoom", () => {
   render(
@@ -191,9 +205,8 @@ it("clears old run statistics when selecting another dataset", async () => {
   );
   render(<App />);
   await screen.findByText("52");
-  fireEvent.change(screen.getByLabelText("Dataset"), {
-    target: { value: "d2" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Dataset", exact: true }));
+  fireEvent.click(screen.getByRole("option", { name: /200 baskets/ }));
   expect(screen.queryByText("52")).not.toBeInTheDocument();
   expect(screen.getByText("200")).toBeInTheDocument();
 });
@@ -233,7 +246,9 @@ it("supports Space on graph relationships and provides button alternatives to dr
   expect(screen.getByText("Inspect this evidence")).toBeInTheDocument();
   expect(edge).toHaveAttribute("aria-pressed", "true");
   fireEvent.click(screen.getByRole("button", { name: "Pan left" }));
-  expect(screen.getByLabelText("Inspect relationship")).toHaveValue("1");
+  expect(
+    screen.getByRole("button", { name: "Inspect relationship" }),
+  ).toHaveTextContent("#1 Apples ↔ Bread");
 });
 
 it("keeps the current result table when its active navigation item is selected again", async () => {
@@ -270,7 +285,7 @@ it("keeps the current result table when its active navigation item is selected a
     }),
   );
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   const button = screen.getByRole("button", {
     name: "Association Rules",
@@ -317,7 +332,7 @@ it("debounces search and retains the table while the filtered request is pending
     });
   });
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
@@ -375,8 +390,14 @@ it("searches source-specific dataset names and selects the matching catalog entr
   const option = screen.getByRole("button", { name: /North Shop Purchases/ });
   fireEvent.click(option);
   expect(option).toHaveAttribute("aria-pressed", "true");
-  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
-  expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mining Configuration", exact: true }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: "Dataset", exact: true }),
+    ).toHaveTextContent("North Shop Purchases"),
+  );
 });
 
 it("keeps the loaded rule table when selecting the same run from history", async () => {
@@ -418,7 +439,7 @@ it("keeps the loaded rule table when selecting the same run from history", async
     }),
   );
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -481,7 +502,7 @@ it("resets server pagination atomically when a debounced filter changes", async 
     }),
   );
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
@@ -530,7 +551,7 @@ it("stops active mining polling when leaving the monitoring screens", async () =
     }),
   );
   render(<App />);
-  await screen.findByText("Mining Running");
+  await screen.findByText(/Mining Running/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Datasets", exact: true }),
@@ -539,7 +560,9 @@ it("stops active mining polling when leaving the monitoring screens", async () =
   expect(
     api.get.mock.calls.filter(([path]) => path === `/runs/${RUN_ID}`),
   ).toHaveLength(1);
-  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Mining Execution", exact: true }),
+  );
   await waitFor(() =>
     expect(
       api.get.mock.calls.filter(([path]) => path === `/runs/${RUN_ID}`),
@@ -569,17 +592,19 @@ it("clears an interrupted result loading state when navigating away", async () =
         }),
   );
   render(<App />);
-  await screen.findByText("Mining Completed");
+  await screen.findByText(/Mining Completed/);
   expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
-  await screen.findByText("Loading data…");
+  await screen.findByRole("status", { name: "Loading page" });
   fireEvent.click(
     screen.getByRole("button", { name: "Datasets", exact: true }),
   );
   await waitFor(() =>
-    expect(screen.queryByText("Loading data…")).not.toBeInTheDocument(),
+    expect(
+      screen.queryByRole("status", { name: "Loading page" }),
+    ).not.toBeInTheDocument(),
   );
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
     "Datasets",
@@ -593,7 +618,7 @@ it("shows the previous-run popover only where an analysis is required", async ()
     screen.queryByRole("button", { name: "Load a previous run", exact: true }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByRole("heading", { name: "Previous mining runs" }),
+    screen.getByRole("heading", { name: "Recent mining runs" }),
   ).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "Datasets", exact: true }),
@@ -602,9 +627,8 @@ it("shows the previous-run popover only where an analysis is required", async ()
     screen.queryByRole("button", { name: "Load a previous run", exact: true }),
   ).not.toBeInTheDocument();
   for (const name of [
-    "Mining",
     "Association Rules",
-    "Product Layout",
+    "Product Relationship Map",
     "Reports",
   ]) {
     fireEvent.click(screen.getByRole("button", { name, exact: true }));
@@ -612,4 +636,47 @@ it("shows the previous-run popover only where an analysis is required", async ()
       screen.getByRole("button", { name: "Load a previous run", exact: true }),
     ).toBeInTheDocument();
   }
+});
+
+it("resolves the dataset when reopening a saved result URL before navigating to Overview", async () => {
+  history.replaceState(null, "", `/#rules?run=${RUN_ID}`);
+  const run = {
+    run_id: RUN_ID,
+    dataset_id: "d1",
+    status: "Completed",
+    created_at: "2026-01-01T00:00:00Z",
+    execution: { rule_count: 52 },
+  };
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [
+              {
+                ...dataset,
+                dataset_id: "d2",
+                name: "Other imported source",
+                basket_count: 200,
+              },
+              { ...dataset, name: "Selected source" },
+            ]
+          : path.endsWith("/rules")
+            ? { items: [], total: 0 }
+            : path.endsWith("/adjacencies")
+              ? { items: [], total: 0 }
+              : path === "/runs"
+                ? { items: [run], total: 1 }
+                : run,
+    }),
+  );
+  render(<App />);
+  await screen.findByText("No qualifying results");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Overview", exact: true }),
+  );
+  await screen.findByText("100");
+  expect(
+    screen.getByRole("button", { name: "Dataset", exact: true }),
+  ).toHaveTextContent("Selected source");
+  expect(screen.queryByText("200")).not.toBeInTheDocument();
 });

@@ -1,89 +1,69 @@
-# Architecture
+# RetailAtlas architecture
 
-The existing modular monolith is preserved. Python calculates production metrics; React formats persisted evidence and draws conceptual product relationships. No predictive model training or physical floor-plan optimization is implied.
+The existing JavaScript/React and FastAPI modular monolith is retained. PostgreSQL/Supabase replaces the PRD's SQLite proposal. Python computes mining metrics; the browser formats persisted evidence and draws conceptual relationships.
 
-## Request and mining flow
+## Runtime flow
 
 ```mermaid
 flowchart LR
-  U[Verified planner] --> F[React JavaScript dashboard]
-  F <--> S[Supabase Auth]
-  F -->|Access token| A[FastAPI]
-  A --> J[JWKS signature and current-user verification]
-  J --> O[Owner-scoped queries and transaction-local identity]
-  O <--> D[(PostgreSQL retail schema and restrictive RLS)]
-  A --> Q[Exclusive scheduler and bounded concurrency]
-  Q --> W[Spawned FP-Growth worker]
-  B[Complete content-addressed baskets] --> W
-  W -->|Atomic results and status| D
-  I[Controlled import CLI] --> B
-  I --> D
+  Browser[React / JavaScript] --> Auth[Supabase Authentication]
+  Browser --> Query[TanStack Query: account-scoped cache]
+  Query --> API[FastAPI: JWT + ownership]
+  API --> DB[(Supabase PostgreSQL / retail schema)]
+  API --> Parser[Bounded upload parser subprocess]
+  Parser --> Files[Private persistent DATA_DIR]
+  Worker[Single scheduler + bounded mining child] --> Files
+  Worker --> DB
 ```
 
-One ignored root `.env` supplies local configuration. `backend/app/config.py` owns validated server settings and engine/session creation. `frontend/env-public.js` projects only three approved public settings into Vite; automatic environment-prefix exposure is disabled. `frontend/src/config.js` is the browser configuration interface. Hosted process environment values override local files. Database/owner/service-role secrets never belong in frontend settings.
+`AuthProvider` restores/refreshes Supabase sessions, verifies recovery callbacks and aborts requests on account changes. Each authenticated identity receives a separate mounted QueryClient. Obsolete requests consume AbortSignal; private caches clear after unmount. JWT signatures, issuer, audience, expiry and authenticated identity remain backend checks; the Auth user endpoint also checks the current verified account.
 
-## Authentication and ownership
+## Pages and shell
 
-Supabase owns passwords, email verification, recovery, refresh tokens and sessions. The frontend restores sessions through the SDK, protects application entry, cancels requests on identity changes and remounts private state across accounts. No shared operator password or custom password table exists. Theme/sidebar preferences are non-sensitive browser preferences.
+The shared shell contains branding, eight workspace links, a separated Account link, header controls and minimal footer. Desktop sidebar widths are 236/64 px; mobile navigation uses a Radix dialog. Theme/sidebar preferences persist locally.
 
-FastAPI accepts verified ES256/RS256 access tokens with the configured issuer, `authenticated` audience/role, expiration, issued-at and UUID subject. It also checks the current verified user with Auth's user endpoint. JWKS keys are cached for rotation. User IDs from request bodies/query parameters never authorize a record. Access-token validity after logout is subject to Supabase JWT expiry; immediate invalidation of every issued JWT is not claimed.
+| Destination | Stable hash | Data ownership |
+|---|---|---|
+| Overview | `#overview` | Catalog, selected-run summary, top three pairs, five recent runs |
+| Datasets | `#datasets` | Bounded catalog, selected provenance/quality, private dataset actions |
+| Dataset Upload | `#datasets/upload` | Upload configuration, bounded preview/mapping, processing result |
+| Mining Configuration | `#mining/configuration` | Ready datasets, parameters, idempotent submission |
+| Mining Execution | `#mining/execution` | Selected execution and searchable paginated history |
+| Association Rules | `#rules` | Selected run, server-filtered directional rules |
+| Product Relationship Map | `#layout` | Selected run, ten bounded adjacency edges, relationship inspection |
+| Reports | `#reports` | Selected run, evidence/thresholds, paginated pairs and complete CSV |
+| Account | `#account` | Account/profile only; no analytics requests |
 
-Datasets are shared read-only or private to an owner. Every run/status/name/history/itemset/rule/graph/report/CSV lookup checks the verified owner. Legacy runs with NULL owners remain restricted to maintenance access; no new signup inherits them. RLS is defense in depth: restrictive ownership policies intersect runtime grants, while SQLAlchemy applies `retail.user_id` and `retail.maintenance` with transaction-local `set_config`. Commit/rollback resets pooled identity; the listener reapplies it on each new transaction. The controlled CLI/worker explicitly uses maintenance sessions. A fixed-scope security-definer boolean function reports global mining occupancy without exposing other users' records.
+Optional `run`/`dataset` hash query parameters preserve selection on reload and back/forward. `#mining` and optional leading-slash hashes remain compatible. UUIDs are internal selection identifiers, not manual-entry controls.
 
-The `retail` schema stays outside Supabase's exposed Data API schemas. The runtime role has SELECT/INSERT/UPDATE only, no owner/migration administration. Migration credentials are used only on a trusted machine. Auth users remain in Supabase Auth; no duplicate accounts table was introduced.
+Shared components include Sidebar, UserMenu, DatasetSelector/SearchSelect, RunSelector, RunHistory, Status, Notice, skeletons, pagination and semantic design tokens. Radix supplies portal positioning, outside/Escape dismissal and focus restoration. Configuration, upload, account, analytics and graph modules load separately.
 
-## Data model and migrations
+Queries use account/resource/run/filter keys and 30-second freshness, bounded retries and targeted invalidation. Execution polling stops at terminal states and off the execution page. Results preserve valid same-run data during background queries; switching runs remounts incompatible filters/results. Run-selector requests are cancelled on dismissal/unmount. Catalog search currently covers its bounded 100 returned entries.
 
-```mermaid
-erDiagram
-  DATASET ||--o{ PRODUCT : contains
-  DATASET ||--o{ MINING_RUN : analyzed_by
-  MINING_RUN ||--o{ ASSOCIATION_RULE : generates
-  MINING_RUN ||--o{ ADJACENCY : generates
-  DATASET {
-    uuid dataset_id PK
-    string checksum UK
-    uuid owner_id "nullable legacy/private owner"
-    boolean is_shared
-    string name
-    string description
-    string source_url
-    date transaction_start
-    date transaction_end
-    jsonb summary
-  }
-  MINING_RUN {
-    uuid run_id PK
-    uuid dataset_id FK
-    uuid owner_id "nullable restricted legacy"
-    string name
-    string status
-    timestamp created_at
-    jsonb execution
-    jsonb itemsets
-  }
-```
+## Upload and artifact storage
 
-Products use a dataset/code composite key. Adjacency has composite foreign keys to both product endpoints and the run's dataset, canonical `product_a < product_b` ordering and a unique run/pair constraint. UTC timestamps, finite validated thresholds, atomic completion and bounded itemset responses preserve integrity. Raw source/customer rows are not stored in PostgreSQL.
+`POST /datasets/preview` streams a bounded raw file to a generated private staging path and invokes an isolated parser for headers and at most eight sample rows. Alias mapping is automatic only when unambiguous. `POST /datasets` receives the confirmed file/mapping, validates the entire bounded source and persists dataset/products only after source and baskets are published atomically.
 
-Migrations are additive: 001 original schema; 002 ownership/RLS; 003 provenance/date metadata; 004 run names; 005 partial owner/creation/run history index. Each was exercised in a unique disposable schema before applying to the existing application schema. No records were dropped or reassigned.
+Required fields: InvoiceNo, StockCode, Quantity. Description/date/price/country are optional; CustomerID is unnecessary. CSV must be UTF-8, including optional BOM; common delimiters are detected. XLSX uses read-only parsing, defused XML, one worksheet and no evaluated formulas/macros. File size, transfer time, parser time/address space, row/column/cell limits and expanded workbook size are bounded.
 
-## Mining and recovery
+Defaults: 50 MiB source, 600,000 rows, 40 columns, 120 MiB expanded workbook, 100,000 baskets, 10,000 products, 200-character identifiers and 1,000-character descriptions. One parser slot prevents competing memory-heavy imports. Blocking parsing/database work runs outside the ASGI event loop.
 
-The importer validates source columns, applies deterministic exclusions, groups invoice-level baskets and writes atomic content-addressed artifacts. Verified source checksum identifies UCI; other datasets keep their own provenance. Missing-artifact repair preserves already verified custom metadata and ownership. Every eligible invoice remains in the denominator; quantities signify presence, not weight. No sampling or product truncation was added.
+Private storage identity hashes owner, source content and canonical mapping. Identical retries return the same authorized dataset; another account gets its own identity. Sources use `DATA_DIR/sources/<generated-hash>.<format>`; baskets retain the worker-compatible `<hash>.json` contract. Source files are mode 0600 and source directories 0700. No raw filenames become paths. Publication failures remove newly published artifacts; ordinary failures remove staging directories. `cleanup_uploads.py` defaults to a dry run and identifies only old, unreferenced upload remnants. Referenced files and the original UCI source/artifact remain protected.
 
-The existing sparse Boolean FP-Growth pipeline remains in place. Released mlxtend 0.25.0 removes unnecessary upstream null-handling allocations; compatible pandas/NumPy upgrades preserve the complete result digest. Association metrics, canonical pairs and deterministic ranking are unchanged.
+This is durable storage only when `DATA_DIR` is on a persistent volume. Private Supabase Storage was evaluated; provisioning, bucket policies, worker access and cost were not assumed or enabled. Ephemeral hosting filesystems are unsuitable.
 
-POST `/api/v1/runs` validates dataset/artifact/configuration and the account's hourly limit, serializes simultaneous submissions with a transaction advisory lock and permits one active job globally. One scheduler holds a session advisory lock. Its child is bounded by address space and wall time. Results and Completed status commit atomically; failures/timeouts retain safe Failed records. Restart or connection recovery marks interrupted jobs Failed only after exclusive lock acquisition. Recovery stops/reaps a child and reconnects with interruptible exponential backoff capped by configuration. It never silently reruns an interrupted analysis.
+Private datasets can be renamed, downloaded if retained, or archived with confirmation. Archival preserves all historical dependencies and refuses active runs. Shared data cannot be modified through these operations. There is no destructive dataset-delete endpoint.
 
-The default SQLAlchemy pool is five connections and zero overflow **per process**, with acquisition/connect/statement/lock limits, recycling and health checks. The scheduler consumes a parent pool connection; the mining child uses its own process-local engine. Size hosting connection budgets accordingly.
+## Database and mining
 
-## API and client responsibilities
+Existing Dataset/Product/MiningRun/AssociationRule/Adjacency entities and constraints remain. Migration 006 adds nullable `submission_key` plus a partial unique owner/submission index; historical rows are untouched. Query/admission locking returns a previously persisted matching submission before queue/rate checks. Reusing a key with changed parameters returns 409.
 
-Existing `/api/v1` routes remain: health; datasets; dataset summary; create/status runs; rules; adjacencies; report; CSV; itemsets. Added GET runs supports authorized search, dataset/status/date filters, bounded pagination and sort; PATCH run renames an owned run; GET account returns verified identity. Page size is bounded to 100. Authentication is required on account/data routes; health contains only availability. Common responses: 401 invalid/missing session; 403 unverified identity; 404 unavailable/unauthorized record; 409 busy/not-ready/artifact; 422 invalid input; 429 account submission limit; 503 database/Auth/scheduler outage.
+Ownership is explicit in HTTP queries and reinforced by restrictive RLS with transaction-local identity. Pooled sessions clear identity at transaction end. Legacy ownerless runs remain restricted. The runtime role remains separate from migration credentials; Supabase Data API roles do not receive these table grants.
 
-Catalog reads avoid N+1 run lookups. Status/history omit heavy itemsets. Product search runs in SQL and only required labels are fetched for returned rows; CSV intentionally retrieves all authorized recommendation rows and neutralizes spreadsheet formulas. No engine is created per request.
+One scheduler owns a PostgreSQL advisory lock. Admission allows one active job globally and defaults to six submissions/account/hour. A spawned process receives memory/time limits. Queued, Running, Completed and Failed are persisted; worker start time is instrumented. No cancellation, queue positions, percentages or ETA are invented. Restart/connection-loss recovery fails interrupted jobs for explicit resubmission. Existing lock/reconnect/watchdog tests remain.
 
-`App.jsx` coordinates navigation, catalog/run selection and cancellable results; `auth.jsx` owns account sessions/forms; `Account.jsx`, `Sidebar.jsx` and Radix overlays manage accessible account/navigation UI; `RunSelector.jsx` owns searchable history; `Overview.jsx` and `Results.jsx` render evidence; `Graph.jsx` preserves SVG zoom/pan/details; `ui.jsx` and CSS/Tailwind tokens own shared styling. GitHub Dark is default. Search is debounced, stale requests abort, filter/page changes are atomic and terminal/off-screen polling stops. Overview retains inline history; run popovers/details appear on analysis pages only. Tables allow vertical scroll chaining and horizontal keyboard/wheel access.
+FP-Growth preserves invoice baskets, Boolean presence, the complete support denominator, directional confidence/lift, canonical undirected pairs and deterministic ranking. Missing reverse confidence stays NULL. PostgreSQL `greatest` ignores missing directions when applying the either-direction threshold. The graph uses actual connectivity groups, stable D3 layout and collision-aware packing; it is not a physical floor plan.
 
-See [improvement evidence](improvement-report.md) for measurements, test boundaries and production limitations.
+## Verification boundary
+
+The platform browser suite uses a tracked, sanitized **public UCI aggregate fixture**. Test identities and deterministic IDs never enter production code. The separate upload suite launches a loopback-only API, disposable PostgreSQL database and real worker with controlled authentication. Production JWT/RLS checks are tested separately with signed claims and two identities. A second live Supabase account and hosted email delivery remain external checks.
