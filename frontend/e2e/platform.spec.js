@@ -194,6 +194,13 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
   await page.goto("/");
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await expect(page.getByText("358", { exact: true })).toBeVisible();
+  await navigate(page, "Datasets");
+  await navigate(page, "Mining");
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Datasets");
+  await page.goForward();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mining");
+  await navigate(page, "Overview");
   for (const theme of ["dark", "light"]) {
     if ((await page.locator("html").getAttribute("data-theme")) !== theme)
       await page

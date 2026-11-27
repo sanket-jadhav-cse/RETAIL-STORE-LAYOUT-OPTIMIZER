@@ -30,6 +30,7 @@ def test_additive_migration_and_pooled_identity():
                 "002_account_ownership.py",
                 "003_dataset_metadata.py",
                 "004_run_names.py",
+                "005_owner_history_index.py",
             ]:
                 spec = importlib.util.spec_from_file_location(
                     "migration_test", Path("migrations/versions") / filename

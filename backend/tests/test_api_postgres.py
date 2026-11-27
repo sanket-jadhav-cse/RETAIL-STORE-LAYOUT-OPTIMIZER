@@ -570,3 +570,200 @@ def test_result_filters_and_csv_formula_safety(client, store):
     row = next(csv.DictReader(io.StringIO(client.get(root + "/report.csv").text)))
     assert row["name_a"].startswith("'  =")
     assert row["rationale"].startswith("'\n=")
+
+
+def test_catalog_query_budget_and_status_without_itemset_loading(client, store):
+    from sqlalchemy import event
+
+    statements = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    with store.begin() as session:
+        for i in range(10):
+            session.add(
+                Dataset(
+                    name=f"Query budget {i}",
+                    source="TEST",
+                    version="v1",
+                    checksum=uuid.uuid4().hex,
+                    basket_count=1,
+                    summary={},
+                    is_shared=True,
+                )
+            )
+        session.flush()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.name == "Query budget 0")
+        )
+        run = MiningRun(
+            dataset_id=dataset.dataset_id,
+            owner_id=uuid.UUID(int=1),
+            name="Payload Test",
+            min_support=0.02,
+            min_confidence=0.5,
+            min_lift=1,
+            status="Completed",
+            itemsets=[{"items": ["A"], "support": 0.2}] * 1000,
+        )
+        session.add(run)
+        session.flush()
+        run_id = str(run.run_id)
+    bind = store.kw["bind"]
+    event.listen(bind, "before_cursor_execute", capture)
+    try:
+        result = client.get("/api/v1/datasets")
+        assert result.status_code == 200
+        assert len(statements) <= 3, f"Catalog emitted {len(statements)} statements"
+        statements.clear()
+        response = client.get(f"/api/v1/runs/{run_id}")
+        assert response.status_code == 200
+        assert "itemsets" not in response.json()
+        assert not any(".itemsets" in sql for sql in statements)
+        assert (
+            client.get(f"/api/v1/runs/{run_id}/itemsets?page_size=5").json()["total"]
+            == 1000
+        )
+    finally:
+        event.remove(bind, "before_cursor_execute", capture)
+
+
+def test_concurrent_submission_remains_bounded(client, store, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(settings, "mining_runs_per_hour", 1000)
+    with store.begin() as session:
+        dataset = Dataset(
+            name="Concurrent Test",
+            source="TEST",
+            version="v1",
+            checksum=uuid.uuid4().hex,
+            basket_count=1,
+            summary={},
+            is_shared=True,
+        )
+        session.add(dataset)
+        session.flush()
+        identifier = str(dataset.dataset_id)
+        checksum = dataset.checksum
+    (settings.data_dir / f"{checksum}.json").write_text('[["A"]]')
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = list(
+            pool.map(
+                lambda _: client.post("/api/v1/runs", json={"dataset_id": identifier}),
+                range(4),
+            )
+        )
+    assert sorted(r.status_code for r in responses) == [202, 409, 409, 409]
+    with store.begin() as session:
+        run = session.get(
+            MiningRun,
+            uuid.UUID(
+                next(r.json()["run_id"] for r in responses if r.status_code == 202)
+            ),
+        )
+        run.status = "Failed"
+
+
+def test_lost_advisory_lock_is_detected(store, monkeypatch):
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    runner = worker.Runner()
+    runner.connection = store.kw["bind"].connect()
+    try:
+        assert runner.connection.scalar(
+            text("SELECT pg_try_advisory_lock(:key)"), {"key": worker.LOCK_ID}
+        )
+        runner.connection.commit()
+        runner.ensure_lock()
+        runner.connection.execute(
+            text("SELECT pg_advisory_unlock(:key)"), {"key": worker.LOCK_ID}
+        )
+        runner.connection.commit()
+        with pytest.raises(RuntimeError, match="lock lost"):
+            runner.ensure_lock()
+    finally:
+        runner.close()
+
+
+def _blocked_test_job(identifier):
+    import time
+
+    time.sleep(30)
+
+
+def test_watchdog_persists_failure_and_releases_child(store, monkeypatch):
+    import time
+
+    monkeypatch.setattr(worker, "engine", store.kw["bind"])
+    monkeypatch.setattr(worker, "Session", store)
+    monkeypatch.setattr(worker, "execute", _blocked_test_job)
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    monkeypatch.setattr(settings, "mining_timeout_seconds", 0.05)
+    runner = worker.Runner()
+    runner.start()
+    try:
+        with store.begin() as session:
+            dataset = Dataset(
+                name="Watchdog Test",
+                source="TEST",
+                version="v1",
+                checksum=uuid.uuid4().hex,
+                basket_count=1,
+                summary={},
+            )
+            session.add(dataset)
+            session.flush()
+            run = MiningRun(
+                dataset_id=dataset.dataset_id,
+                owner_id=uuid.UUID(int=1),
+                name="Timeout Test",
+                min_support=0.02,
+                min_confidence=0.5,
+                min_lift=1,
+            )
+            session.add(run)
+            session.flush()
+            identifier = run.run_id
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            with store() as session:
+                row = session.get(MiningRun, identifier)
+                if row.status == "Failed":
+                    break
+            time.sleep(0.05)
+        assert row.status == "Failed"
+        assert "resource limit" in row.error
+        assert row.completed_at is not None
+    finally:
+        runner.close()
+    assert not runner.thread.is_alive()
+
+
+def test_artifact_repair_preserves_custom_provenance(
+    client, store, monkeypatch, tmp_path
+):
+    from scripts import import_dataset as importer
+
+    monkeypatch.setattr(importer, "Session", store)
+    path = tmp_path / "shop.csv"
+    path.write_text("InvoiceNo,StockCode,Description,Quantity\n1,A,Apple,1\n")
+    identifier = importer.import_dataset(
+        path,
+        name="Verified Store Purchases",
+        description="Owner supplied description",
+        source="North Store Export",
+        source_url="https://example.invalid/source",
+        owner_id=uuid.UUID(int=1),
+    )
+    with store() as session:
+        row = session.get(Dataset, identifier)
+        (settings.data_dir / f"{row.checksum}.json").unlink()
+    assert importer.import_dataset(path) == identifier
+    with store() as session:
+        row = session.get(Dataset, identifier)
+        assert row.name == "Verified Store Purchases"
+        assert row.description == "Owner supplied description"
+        assert row.source == "North Store Export"
+        assert row.source_url == "https://example.invalid/source"
+        assert row.owner_id == uuid.UUID(int=1) and not row.is_shared
