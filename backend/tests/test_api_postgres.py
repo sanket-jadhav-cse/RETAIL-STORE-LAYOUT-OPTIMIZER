@@ -767,3 +767,101 @@ def test_artifact_repair_preserves_custom_provenance(
         assert row.source == "North Store Export"
         assert row.source_url == "https://example.invalid/source"
         assert row.owner_id == uuid.UUID(int=1) and not row.is_shared
+
+
+def test_scheduler_recovers_after_database_session_disconnect(store, monkeypatch):
+    import time
+
+    monkeypatch.setattr(worker, "engine", store.kw["bind"])
+    monkeypatch.setattr(worker, "Session", store)
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    runner = worker.Runner()
+    runner.start()
+    with store.begin() as session:
+        dataset = Dataset(
+            source="TEST",
+            version="v1",
+            checksum=uuid.uuid4().hex,
+            basket_count=1,
+            summary={},
+        )
+        session.add(dataset)
+        session.flush()
+        interrupted = MiningRun(
+            dataset_id=dataset.dataset_id,
+            status="Running",
+            min_support=0.02,
+            min_confidence=0.5,
+            min_lift=1,
+        )
+        session.add(interrupted)
+        session.flush()
+        interrupted_id = interrupted.run_id
+    lock_query = text(
+        "SELECT pid FROM pg_locks WHERE locktype='advisory' AND granted AND objsubid=1 AND classid::bigint=:high AND objid::bigint=:low"
+    )
+    params = {"high": worker.LOCK_ID >> 32, "low": worker.LOCK_ID & 0xFFFFFFFF}
+    try:
+        with store.kw["bind"].connect() as control:
+            original_pid = control.scalar(lock_query, params)
+            assert original_pid
+            assert control.scalar(
+                text("SELECT pg_terminate_backend(:pid)"), {"pid": original_pid}
+            )
+            control.commit()
+            deadline = time.monotonic() + 6
+            recovered_pid = None
+            while time.monotonic() < deadline:
+                recovered_pid = control.scalar(lock_query, params)
+                control.commit()
+                if runner.ready and recovered_pid and recovered_pid != original_pid:
+                    break
+                time.sleep(0.05)
+            assert runner.ready, "A temporary DB disconnect permanently disabled mining"
+            assert recovered_pid and recovered_pid != original_pid
+        with store() as session:
+            recovered = session.get(MiningRun, interrupted_id)
+            assert recovered.status == "Failed"
+            assert "connection loss" in recovered.error
+    finally:
+        runner.close()
+    assert not runner.thread.is_alive()
+
+
+def test_scheduler_recovery_waits_for_exclusive_lock_and_shutdown(store, monkeypatch):
+    import time
+
+    monkeypatch.setattr(worker, "engine", store.kw["bind"])
+    monkeypatch.setattr(worker, "Session", store)
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    runner = worker.Runner()
+    runner.start()
+    with store.kw["bind"].connect() as control:
+        try:
+            pid = control.scalar(
+                text(
+                    "SELECT pid FROM pg_locks WHERE locktype='advisory' AND granted AND objsubid=1 AND classid::bigint=:high AND objid::bigint=:low"
+                ),
+                {"high": worker.LOCK_ID >> 32, "low": worker.LOCK_ID & 0xFFFFFFFF},
+            )
+            control.execute(text("SELECT pg_terminate_backend(:pid)"), {"pid": pid})
+            assert control.scalar(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": worker.LOCK_ID}
+            )
+            control.commit()
+            deadline = time.monotonic() + 3
+            while runner.ready and time.monotonic() < deadline:
+                time.sleep(0.05)
+            assert not runner.ready
+            time.sleep(1.2)
+            assert not runner.ready, "Recovery must not bypass another scheduler's lock"
+            started = time.monotonic()
+            runner.close()
+            assert time.monotonic() - started < 2
+            assert not runner.thread.is_alive()
+        finally:
+            runner.close()
+            control.execute(
+                text("SELECT pg_advisory_unlock(:key)"), {"key": worker.LOCK_ID}
+            )
+            control.commit()
