@@ -92,6 +92,13 @@ def import_dataset(
                     "Recalculated dataset statistics differ; investigate before updating"
                 )
             for key, value in metadata.items():
+                if (
+                    checksum != UCI_CHECKSUM
+                    and existing.summary.get("metadata_version") == 1
+                    and key
+                    not in {"transaction_start", "transaction_end", "processing_status"}
+                ):
+                    continue
                 setattr(existing, key, value)
             existing.summary = summary
             if checksum == UCI_CHECKSUM:
