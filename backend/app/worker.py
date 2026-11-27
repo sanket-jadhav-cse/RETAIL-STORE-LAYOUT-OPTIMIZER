@@ -76,30 +76,51 @@ class Runner:
         if self.ready or (self.thread and self.thread.is_alive()):
             raise RuntimeError("Mining scheduler already running")
         self.stop_event.clear()
-        self.connection = engine.connect()
         try:
-            acquired = self.connection.scalar(
-                text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_ID}
-            )
-            self.connection.commit()
-            if not acquired:
-                raise RuntimeError("Only one application worker is supported")
-            with Session.begin() as session:
-                session.execute(
-                    update(MiningRun)
-                    .where(MiningRun.status.in_(["Queued", "Running"]))
-                    .values(
-                        status="Failed",
-                        error="Interrupted by application restart; submit a new run.",
-                        completed_at=now(),
-                    )
-                )
+            self.acquire_lock()
             self.ready = True
             self.thread = threading.Thread(target=self.loop, daemon=True)
             self.thread.start()
         except BaseException:
             self.close()
             raise
+
+    def acquire_lock(self):
+        self.connection = engine.connect()
+        acquired = self.connection.scalar(
+            text("SELECT pg_try_advisory_lock(:key)"), {"key": LOCK_ID}
+        )
+        self.connection.commit()
+        if not acquired:
+            raise RuntimeError("Only one application worker is supported")
+        # Only the exclusive scheduler may recover interrupted work. Never
+        # reset another live scheduler's jobs while waiting to reacquire.
+        with Session.begin() as session:
+            session.execute(
+                update(MiningRun)
+                .where(MiningRun.status.in_(["Queued", "Running"]))
+                .values(
+                    status="Failed",
+                    error="Interrupted by application restart or connection loss; submit a new run.",
+                    completed_at=now(),
+                )
+            )
+
+    def reconnect(self):
+        self.ready = False
+        self.release_connection()
+        delay = 1
+        while not self.stop_event.wait(delay):
+            try:
+                self.acquire_lock()
+                if self.stop_event.is_set():
+                    self.release_connection()
+                    return
+                self.ready = True
+                return
+            except Exception:
+                self.release_connection()
+                delay = min(delay * 2, settings.scheduler_reconnect_max_seconds)
 
     def ensure_lock(self):
         # A reconnected session must not silently continue without its lock.
@@ -129,6 +150,7 @@ class Runner:
     def loop(self):
         while not self.stop_event.wait(0.5):
             child = None
+            failed = False
             try:
                 self.ensure_lock()
                 with Session.begin() as session:
@@ -165,19 +187,24 @@ class Runner:
                         run.completed_at = now()
             except Exception:
                 self.ready = False
-                return
+                failed = True
             finally:
                 if child is not None:
                     if child.pid is not None:
                         self.stop_child(child)
                     if not child.is_alive():
                         child.close()
+            if failed:
+                self.reconnect()
 
     def close(self):
         self.ready = False
         self.stop_event.set()
         if self.thread and self.thread.is_alive():
             self.thread.join(timeout=35)
+        self.release_connection()
+
+    def release_connection(self):
         connection = self.connection
         if connection and not connection.closed:
             try:

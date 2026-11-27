@@ -1,4 +1,8 @@
 # Evaluation
+
+Current account-platform verification is recorded in [improvement-report.md](improvement-report.md) and [final-report.md](final-report.md). Full-data counts and the sorted result digest are unchanged after the mlxtend upgrade. Three fresh after samples use about 306.55–306.75 MiB child RSS; full isolated persistence uses 322.65 MiB. The measurements below are the preserved original baseline, not the current memory profile. The historical JSON snapshot is intentionally unchanged.
+
+## Original baseline evidence
 Full UCI dataset, no subsampling. Evidence snapshot: `evaluation-results.json` (first 25 recommendations; database/CSV contain all 38). Thresholds: support 0.02, confidence 0.50, lift 1.0, maximum itemset size 3. Basket denominator 20,728, product codes 3,829; 358 itemsets, 52 qualifying rules, 38 unique undirected adjacency pairs. The first real run took 18.8316 s of mining; process peak RSS 1537.98 MiB (Linux ru_maxrss/1024). Two later runtime-role runs reproduced the counts in 42.9933 s and 50.8164 s, with peak RSS up to 1538.92 MiB. The snapshot records the latest run. Concurrent verification and encoding revisions mean these are not controlled timing comparisons or Render capacity guarantees. Timestamps and run ID are retained in the snapshot.
 
 ## Metric correctness

@@ -238,6 +238,10 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
     page.getByRole("button", { name: "Expand sidebar" }),
   ).toBeVisible();
   await noOverflow(page);
+  await expect(
+    page.getByRole("button", { name: "Load a previous run" }),
+  ).toHaveCount(0);
+  await navigate(page, "Mining");
   await page.getByRole("button", { name: "Load a previous run" }).click();
   const dialog = page.getByRole("dialog", { name: "Load a previous run" });
   await expect(
@@ -271,6 +275,14 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
   await expect(
     page.getByRole("heading", { name: "Account information" }),
   ).toBeVisible();
+  await expect(page.getByLabel("Display name")).toHaveValue(
+    "Isolated test account",
+  );
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/account-profile.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Send password reset" }).click();
   await expect(
     page.getByText(/reset instructions will arrive shortly/),
@@ -282,6 +294,11 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
     })
     .click();
   await expect(page.getByText(/Co-purchased in/)).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/graph-detail.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Reset view" }).click();
   await page
     .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
@@ -382,9 +399,19 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(
     page.getByRole("heading", { name: "Verify your email" }),
   ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/email-verification.png",
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: "Forgot password", exact: true })
     .click();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/forgot-password.png",
+    fullPage: true,
+  });
   await page.getByLabel("Email address").fill("planner@example.invalid");
   await page
     .getByRole("button", { name: "Forgot password", exact: true })
@@ -402,4 +429,89 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.goto(
+    "/#error=access_denied&error_code=otp_expired&error_description=untrusted-text",
+  );
+  // Open the callback as a fresh document, as with an external email link.
+  await page.reload();
+  await expect(
+    page.getByText(/This email link is invalid or has expired/),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Resend verification", exact: true })
+    .click();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/resend-verification.png",
+    fullPage: true,
+  });
+  await page.addInitScript(
+    (value) =>
+      localStorage.setItem("sb-retail-test-auth-token", JSON.stringify(value)),
+    session(),
+  );
+  await page.goto("/reset-password");
+  await expect(
+    page.getByRole("heading", { name: "Reset password", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/reset-password.png",
+    fullPage: true,
+  });
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("offline-new-password");
+  await page
+    .getByRole("button", { name: "Reset password", exact: true })
+    .click();
+  await expect(page.getByText("358", { exact: true })).toBeVisible();
+});
+
+test("table wheel scrolling reaches the page and retains horizontal access", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.setViewportSize({ width: 1024, height: 700 });
+  await page.goto("/");
+  await expect(page.getByText("358", { exact: true })).toBeVisible();
+  for (const name of ["Datasets", "Association Rules", "Reports"]) {
+    await navigate(page, name);
+    const table = page.locator(".table-scroll").first();
+    await table.evaluate((element) =>
+      element.scrollIntoView({ block: "start" }),
+    );
+    const box = await table.boundingBox();
+    await page.mouse.move(
+      box.x + Math.min(box.width / 2, 200),
+      Math.max(20, box.y + 30),
+    );
+    const before = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, 450);
+    await expect
+      .poll(() => page.evaluate(() => scrollY))
+      .toBeGreaterThan(before);
+    await page.mouse.move(1000, 300);
+    const outside = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, -200);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(outside);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await navigate(page, "Association Rules");
+  const rules = page.getByRole("region", {
+    name: "Scrollable association rules",
+  });
+  await rules.focus();
+  await rules.press("ArrowRight");
+  await expect
+    .poll(() => rules.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
+  await rules.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  const box = await rules.boundingBox();
+  await page.mouse.move(box.x + 50, Math.max(20, box.y + 50));
+  const before = await rules.evaluate((element) => element.scrollLeft);
+  await page.mouse.wheel(180, 0);
+  await expect
+    .poll(() => rules.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(before);
 });

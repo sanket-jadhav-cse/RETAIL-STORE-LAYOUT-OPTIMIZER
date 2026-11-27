@@ -1096,7 +1096,9 @@ details[open] > summary > .icon {
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  overscroll-behavior: contain;
+  /* Horizontal overflow must not trap a vertical wheel/touch gesture. */
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
 }
 .rules-table {
   min-width: 680px;
@@ -2049,6 +2051,9 @@ details[open] > summary > .icon {
   display: grid;
   gap: 16px;
   margin-top: 24px;
+}
+.run-history .run-list {
+  overscroll-behavior-y: auto;
 }
 @media (max-width: 500px) {
   .history-filters {

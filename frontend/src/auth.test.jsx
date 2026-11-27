@@ -16,8 +16,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({ auth: mocks }),
 }));
-vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
-vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "public-test-key");
+vi.mock("./config", () => ({
+  config: {
+    supabaseUrl: "https://test.supabase.co",
+    supabasePublishableKey: "public-test-key",
+  },
+}));
 const { AuthScreen } = await import("./auth");
 afterEach(() => {
   cleanup();

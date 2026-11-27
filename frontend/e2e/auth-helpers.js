@@ -38,6 +38,26 @@ export async function signIn(page, { loadRun = true } = {}) {
     timeout: 45000,
   });
   if (loadRun) {
+    await navigate(page, "Mining");
+    await page
+      .getByRole("button", { name: "Load a previous run", exact: true })
+      .click();
+    const history = page.getByRole("dialog", { name: "Load a previous run" });
+    await history
+      .getByRole("combobox", { name: "Status", exact: true })
+      .selectOption("Completed");
+    await history
+      .getByRole("combobox", { name: "Search previous runs" })
+      .fill("Baseline Market Basket");
+    await history
+      .getByRole("listbox", { name: "Previous mining runs" })
+      .getByRole("option", {
+        name: /Baseline Market Basket Analysis.*Completed/,
+      })
+      .first()
+      .click();
+    await expect(history).toBeHidden();
+    await navigate(page, "Overview");
     await expect(page.getByText("358", { exact: true })).toBeVisible({
       timeout: 45000,
     });

@@ -1,6 +1,7 @@
 import axios from "axios";
+import { config } from "./config";
 export const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"}/api/v1`,
+  baseURL: `${config.apiBaseUrl}/api/v1`,
   timeout: 20000,
 });
 const uuidPattern =

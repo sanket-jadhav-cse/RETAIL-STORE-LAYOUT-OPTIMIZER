@@ -132,7 +132,8 @@ it("renders rules and report responses", async () => {
     }),
   );
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Completed");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -269,7 +270,8 @@ it("keeps the current result table when its active navigation item is selected a
     }),
   );
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Completed");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   const button = screen.getByRole("button", {
     name: "Association Rules",
     exact: true,
@@ -315,7 +317,8 @@ it("debounces search and retains the table while the filtered request is pending
     });
   });
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Completed");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -371,8 +374,9 @@ it("searches source-specific dataset names and selects the matching catalog entr
   });
   const option = screen.getByRole("button", { name: /North Shop Purchases/ });
   fireEvent.click(option);
-  expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
   expect(option).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
+  expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
 });
 
 it("keeps the loaded rule table when selecting the same run from history", async () => {
@@ -414,9 +418,7 @@ it("keeps the loaded rule table when selecting the same run from history", async
     }),
   );
   render(<App />);
-  await screen.findByText("Baseline Analysis", {
-    selector: ".selected-run-name",
-  });
+  await screen.findByText("Mining Completed");
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -479,7 +481,8 @@ it("resets server pagination atomically when a debounced filter changes", async 
     }),
   );
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Completed");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -527,7 +530,8 @@ it("stops active mining polling when leaving the monitoring screens", async () =
     }),
   );
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Running");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Datasets", exact: true }),
   );
@@ -565,7 +569,8 @@ it("clears an interrupted result loading state when navigating away", async () =
         }),
   );
   render(<App />);
-  await screen.findByText("Selected analysis");
+  await screen.findByText("Mining Completed");
+  expect(document.querySelector(".run-status-row")).toBeNull();
   fireEvent.click(
     screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
@@ -579,4 +584,32 @@ it("clears an interrupted result loading state when navigating away", async () =
   expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
     "Datasets",
   );
+});
+
+it("shows the previous-run popover only where an analysis is required", async () => {
+  render(<App />);
+  await screen.findByText("100");
+  expect(
+    screen.queryByRole("button", { name: "Load a previous run", exact: true }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Previous mining runs" }),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Datasets", exact: true }),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Load a previous run", exact: true }),
+  ).not.toBeInTheDocument();
+  for (const name of [
+    "Mining",
+    "Association Rules",
+    "Product Layout",
+    "Reports",
+  ]) {
+    fireEvent.click(screen.getByRole("button", { name, exact: true }));
+    expect(
+      screen.getByRole("button", { name: "Load a previous run", exact: true }),
+    ).toBeInTheDocument();
+  }
 });
