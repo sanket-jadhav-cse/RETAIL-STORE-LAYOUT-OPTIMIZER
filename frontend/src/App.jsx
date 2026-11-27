@@ -80,7 +80,7 @@ export default function App() {
     }),
     [theme, toggleTheme] = useTheme(),
     [menuOpen, setMenuOpen] = useState(false),
-    [collapsed, updateCollapsed] = useState(() => {
+    [collapsed, setCollapsedPreference] = useState(() => {
       try {
         return localStorage.getItem("retailSidebarCollapsed") === "true";
       } catch {
@@ -188,8 +188,8 @@ export default function App() {
         pollingEnabled &&
         ["Queued", "Running"].includes(statusSnapshot.current.data.status)
       )
-        poll();
-    } else poll();
+        void poll();
+    } else void poll();
     return () => {
       controller.abort();
       clearTimeout(timer);
@@ -270,7 +270,7 @@ export default function App() {
     return () => controller.abort();
   }, [runId, run?.status, refresh]);
   function setCollapsed(value) {
-    updateCollapsed(value);
+    setCollapsedPreference(value);
     try {
       localStorage.setItem("retailSidebarCollapsed", String(value));
     } catch {
