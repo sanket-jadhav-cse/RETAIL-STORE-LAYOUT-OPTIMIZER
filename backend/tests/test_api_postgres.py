@@ -627,3 +627,114 @@ def test_catalog_query_budget_and_status_without_itemset_loading(client, store):
         )
     finally:
         event.remove(bind, "before_cursor_execute", capture)
+
+
+def test_concurrent_submission_remains_bounded(client, store, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(settings, "mining_runs_per_hour", 1000)
+    with store.begin() as session:
+        dataset = Dataset(
+            name="Concurrent Test",
+            source="TEST",
+            version="v1",
+            checksum=uuid.uuid4().hex,
+            basket_count=1,
+            summary={},
+            is_shared=True,
+        )
+        session.add(dataset)
+        session.flush()
+        identifier = str(dataset.dataset_id)
+        checksum = dataset.checksum
+    (settings.data_dir / f"{checksum}.json").write_text('[["A"]]')
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = list(
+            pool.map(
+                lambda _: client.post("/api/v1/runs", json={"dataset_id": identifier}),
+                range(4),
+            )
+        )
+    assert sorted(r.status_code for r in responses) == [202, 409, 409, 409]
+    with store.begin() as session:
+        run = session.get(
+            MiningRun,
+            uuid.UUID(
+                next(r.json()["run_id"] for r in responses if r.status_code == 202)
+            ),
+        )
+        run.status = "Failed"
+
+
+def test_lost_advisory_lock_is_detected(store, monkeypatch):
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    runner = worker.Runner()
+    runner.connection = store.kw["bind"].connect()
+    try:
+        assert runner.connection.scalar(
+            text("SELECT pg_try_advisory_lock(:key)"), {"key": worker.LOCK_ID}
+        )
+        runner.connection.commit()
+        runner.ensure_lock()
+        runner.connection.execute(
+            text("SELECT pg_advisory_unlock(:key)"), {"key": worker.LOCK_ID}
+        )
+        runner.connection.commit()
+        with pytest.raises(RuntimeError, match="lock lost"):
+            runner.ensure_lock()
+    finally:
+        runner.close()
+
+
+def _blocked_test_job(identifier):
+    import time
+
+    time.sleep(30)
+
+
+def test_watchdog_persists_failure_and_releases_child(store, monkeypatch):
+    import time
+
+    monkeypatch.setattr(worker, "engine", store.kw["bind"])
+    monkeypatch.setattr(worker, "Session", store)
+    monkeypatch.setattr(worker, "execute", _blocked_test_job)
+    monkeypatch.setattr(worker, "LOCK_ID", uuid.uuid4().int % (2**60))
+    monkeypatch.setattr(settings, "mining_timeout_seconds", 0.05)
+    runner = worker.Runner()
+    runner.start()
+    try:
+        with store.begin() as session:
+            dataset = Dataset(
+                name="Watchdog Test",
+                source="TEST",
+                version="v1",
+                checksum=uuid.uuid4().hex,
+                basket_count=1,
+                summary={},
+            )
+            session.add(dataset)
+            session.flush()
+            run = MiningRun(
+                dataset_id=dataset.dataset_id,
+                owner_id=uuid.UUID(int=1),
+                name="Timeout Test",
+                min_support=0.02,
+                min_confidence=0.5,
+                min_lift=1,
+            )
+            session.add(run)
+            session.flush()
+            identifier = run.run_id
+        deadline = time.monotonic() + 8
+        while time.monotonic() < deadline:
+            with store() as session:
+                row = session.get(MiningRun, identifier)
+                if row.status == "Failed":
+                    break
+            time.sleep(0.05)
+        assert row.status == "Failed"
+        assert "resource limit" in row.error
+        assert row.completed_at is not None
+    finally:
+        runner.close()
+    assert not runner.thread.is_alive()
