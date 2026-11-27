@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 
-fixture = json.loads(Path("test-results/improvements/browser-fixture.json").read_text())
+fixture = json.loads(Path("frontend/e2e/fixtures/uci-aggregate.json").read_text())
 engine = create_engine(
     settings.migration_database_url or settings.database_url,
     hide_parameters=True,

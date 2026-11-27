@@ -1,142 +1,72 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth, supabase } from "./auth";
-import { api, errorMessage } from "./api";
-import { Popover } from "./overlays";
+import { useResource } from "./queries";
+import { PageSkeleton, QueryError } from "./ui";
+import Icon from "./Icon";
 import { Notice } from "./ui";
 
-export function UserMenu({ onAccount }) {
-  const auth = useAuth();
-  const [open, setOpen] = useState(false),
-    [error, setError] = useState("");
-  if (!auth?.user) return null;
-  const name = auth.user.user_metadata?.display_name || auth.user.email;
-  return (
-    <Popover
-      open={open}
-      onOpenChange={setOpen}
-      label="Account menu"
-      trigger={
-        <button
-          className="icon-button account-avatar"
-          type="button"
-          aria-label="Open account menu"
-          title={name}
-        >
-          {name?.slice(0, 1).toUpperCase() || "●"}
-        </button>
-      }
-    >
-      <p className="account-name">{name}</p>
-      <p className="muted account-email">{auth.user.email}</p>
-      {error && <Notice kind="error">{error}</Notice>}
-      <button
-        type="button"
-        className="button secondary"
-        onClick={() => {
-          setOpen(false);
-          onAccount();
-        }}
-      >
-        Profile settings and account information
-      </button>
-      <button
-        type="button"
-        className="button secondary"
-        onClick={async () => {
-          const result = await auth.signOut();
-          if (result.error) setError("Sign out failed. Please retry.");
-        }}
-      >
-        Sign out
-      </button>
-    </Popover>
-  );
-}
-
-export default function Account({ collapsed, setCollapsed }) {
-  const auth = useAuth();
-  const [profile, setProfile] = useState(null),
-    [name, setName] = useState(""),
+export default function Account({
+  collapsed,
+  setCollapsed,
+  theme,
+  toggleTheme,
+}) {
+  const client = useQueryClient();
+  const auth = useAuth(),
+    account = useResource(["account"], "/account");
+  const [draft, setDraft] = useState(null),
+    [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
-    [feedback, setFeedback] = useState(""),
-    [busy, setBusy] = useState(false),
-    [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    api
-      .get("/account", { signal: controller.signal })
-      .then(({ data }) => {
-        setProfile(data);
-        setName(data.display_name || "");
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(errorMessage(e));
-      });
-    return () => controller.abort();
-  }, [retry]);
-  async function action(task, message) {
+    [feedback, setFeedback] = useState("");
+  const profile = account.data,
+    name = draft ?? profile?.display_name ?? "";
+  async function action(key, task, message) {
     if (busy) return;
-    setBusy(true);
+    setBusy(key);
     setError("");
     setFeedback("");
     try {
       const result = await task();
       if (result.error) throw result.error;
+      if (key === "profile")
+        client.setQueryData(
+          [auth?.user?.id || "isolated-test", "account", {}],
+          (old) => ({ ...old, display_name: name.trim() }),
+        );
       setFeedback(message);
     } catch {
       setError("Unable to update your account. Please retry.");
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
+  if (account.isPending) return <PageSkeleton />;
+  if (account.isError) return <QueryError query={account} />;
   return (
-    <section className="panel account-panel">
-      <h2>Account information</h2>
-      {error && (
-        <Notice kind="error">
-          {error}
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => {
-              setError("");
-              setRetry((n) => n + 1);
-            }}
-          >
-            Retry
-          </button>
-        </Notice>
-      )}
+    <>
+      {error && <Notice kind="error">{error}</Notice>}
       {feedback && <Notice kind="success">{feedback}</Notice>}
-      {!profile ? (
-        <output>Loading account…</output>
-      ) : (
-        <>
-          <dl className="source-metadata">
+      <div className="account-columns">
+        <section className="panel account-profile">
+          <div className="profile-heading">
+            <span className="profile-avatar">
+              {(profile.display_name || profile.email || "?")
+                .slice(0, 1)
+                .toUpperCase()}
+            </span>
             <div>
-              <dt>Email</dt>
-              <dd>{profile.email}</dd>
+              <h2>{profile.display_name || "Your profile"}</h2>
+              <span className="muted">RetailAtlas workspace</span>
             </div>
-            <div>
-              <dt>Email verification</dt>
-              <dd>
-                {profile.email_verified ? "Verified" : "Verification pending"}
-              </dd>
-            </div>
-            <div>
-              <dt>Account created</dt>
-              <dd>
-                {profile.created_at
-                  ? new Date(profile.created_at).toLocaleDateString()
-                  : "Unavailable"}
-              </dd>
-            </div>
-          </dl>
+          </div>
+          <h3>Profile information</h3>
           <form
             className="auth-form"
             onSubmit={(e) => {
               e.preventDefault();
               void action(
+                "profile",
                 () =>
                   supabase.auth.updateUser({
                     data: { display_name: name.trim() },
@@ -148,55 +78,127 @@ export default function Account({ collapsed, setCollapsed }) {
             <label>
               <span>Display name</span>
               <input
-                value={name}
                 maxLength={80}
                 required
-                onChange={(e) => setName(e.target.value)}
+                value={name}
+                onChange={(e) => setDraft(e.target.value)}
               />
             </label>
+            <dl className="account-metadata">
+              <div>
+                <dt>Email address</dt>
+                <dd>{profile.email}</dd>
+              </div>
+              <div>
+                <dt>Email verification</dt>
+                <dd className="ready-indicator">
+                  {profile.email_verified ? "Verified" : "Verification pending"}
+                </dd>
+              </div>
+              <div>
+                <dt>Account created</dt>
+                <dd>
+                  {profile.created_at
+                    ? new Date(profile.created_at).toLocaleDateString()
+                    : "Unavailable"}
+                </dd>
+              </div>
+            </dl>
             <button
               type="submit"
               className="button primary"
-              disabled={busy || !name.trim()}
+              disabled={!!busy || !name.trim()}
             >
-              Save profile
+              {busy === "profile" ? (
+                <>
+                  <span className="spinner" />
+                  Saving profile…
+                </>
+              ) : (
+                "Save profile"
+              )}
             </button>
           </form>
-          {setCollapsed && (
-            <label className="preference-control">
-              <input
-                type="checkbox"
-                checked={collapsed}
-                onChange={(e) => setCollapsed(e.target.checked)}
-              />
-              <span>Collapse sidebar</span>
-            </label>
-          )}
-          <div className="button-group">
+        </section>
+        <section className="panel account-security">
+          <span className="guide-icon">
+            <Icon name="shield" />
+          </span>
+          <h2>Security</h2>
+          <p className="muted">Manage access to your RetailAtlas account.</p>
+          <h3>Password reset</h3>
+          <p className="muted">Receive a secure link to set a new password.</p>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!!busy}
+            onClick={() =>
+              action(
+                "reset",
+                () => auth.requestReset(profile.email),
+                "If your account can receive email, reset instructions will arrive shortly.",
+              )
+            }
+          >
+            {busy === "reset" ? (
+              <>
+                <span className="spinner" />
+                Sending reset…
+              </>
+            ) : (
+              "Send password reset"
+            )}
+          </button>
+          <div className="account-session">
+            <h3>Current session</h3>
+            <p className="muted">Sign out of this workspace.</p>
             <button
               type="button"
               className="button secondary"
-              disabled={busy}
-              onClick={() =>
-                action(
-                  () => auth.requestReset(profile.email),
-                  "If your account can receive email, reset instructions will arrive shortly.",
-                )
-              }
-            >
-              Send password reset
-            </button>
-            <button
-              type="button"
-              className="button secondary"
-              disabled={busy}
-              onClick={() => action(auth.signOut, "Signed out.")}
+              disabled={!!busy}
+              onClick={() => action("signout", auth.signOut, "Signed out.")}
             >
               Sign out
             </button>
           </div>
-        </>
-      )}
-    </section>
+        </section>
+        <section className="panel account-preferences">
+          <span className="guide-icon">
+            <Icon name="sliders" />
+          </span>
+          <h2>Preferences</h2>
+          <p className="muted">Customize your workspace appearance.</p>
+          <h3>Theme</h3>
+          <div className="theme-options">
+            {["dark", "light"].map((t) => (
+              <button
+                type="button"
+                className="theme-option"
+                key={t}
+                aria-pressed={theme === t}
+                onClick={() => {
+                  if (theme !== t) toggleTheme();
+                }}
+              >
+                <Icon name={t === "dark" ? "moon" : "sun"} />
+                {t === "dark" ? "Dark" : "Light"}
+              </button>
+            ))}
+          </div>
+          <h3>Sidebar</h3>
+          <label className="preference-control">
+            <input
+              type="checkbox"
+              checked={collapsed}
+              onChange={(e) => setCollapsed(e.target.checked)}
+            />
+            <span>Collapse sidebar</span>
+          </label>
+          <p className="muted">
+            Appearance preferences are saved on this browser.
+          </p>
+        </section>
+      </div>
+    </>
   );
 }

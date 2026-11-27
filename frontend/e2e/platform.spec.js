@@ -1,206 +1,25 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import fs from "node:fs";
-const fixture = JSON.parse(
-  fs.readFileSync("../test-results/improvements/browser-fixture.json", "utf8"),
-);
-const names = [
-  "Overview",
-  "Datasets",
-  "Mining",
-  "Association Rules",
-  "Product Layout",
-  "Reports",
-];
-const user = {
-  id: "00000000-0000-4000-8000-000000000001",
-  aud: "authenticated",
-  role: "authenticated",
-  email: "planner@example.invalid",
-  email_confirmed_at: "2026-01-01T00:00:00Z",
-  created_at: "2026-01-01T00:00:00Z",
-  user_metadata: { display_name: "Isolated test account" },
-};
-function session() {
-  const encode = (value) =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
-  return {
-    access_token: `${encode({ alg: "ES256", typ: "JWT" })}.${encode({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600, role: "authenticated" })}.test-fixture-signature`,
-    token_type: "bearer",
-    expires_in: 3600,
-    expires_at: Math.floor(Date.now() / 1000) + 3600,
-    refresh_token: "offline-test-fixture-refresh-token",
-    user,
-  };
-}
-async function setup(page, { signedIn = true } = {}) {
-  page.on("pageerror", (error) => console.log("Browser error:", error.message));
-  if (signedIn)
-    await page.addInitScript((value) => {
-      localStorage.setItem("sb-retail-test-auth-token", JSON.stringify(value));
-    }, session());
-  await page.route("https://retail-test.supabase.co/**", (route) => {
-    const path = new URL(route.request().url()).pathname;
-    return route.fulfill({
-      status: path.endsWith("/logout") ? 204 : 200,
-      contentType: "application/json",
-      body: path.endsWith("/logout")
-        ? ""
-        : JSON.stringify(
-            path.endsWith("/user")
-              ? user
-              : path.endsWith("/signup")
-                ? { user, session: null }
-                : path.endsWith("/recover")
-                  ? {}
-                  : session(),
-          ),
-    });
-  });
-  await page.route("**/api/v1/**", (route) => {
-    const url = new URL(route.request().url()),
-      path = url.pathname,
-      params = url.searchParams;
-    let data;
-    if (path.endsWith("/account"))
-      data = {
-        user_id: user.id,
-        email: user.email,
-        display_name: user.user_metadata.display_name,
-        created_at: user.created_at,
-        email_verified: true,
-      };
-    else if (path.endsWith("/datasets")) data = [fixture.dataset];
-    else if (path.endsWith("/health"))
-      data = { status: "ok", mining_available: true };
-    else if (path.endsWith("/runs") && route.request().method() === "POST")
-      data = {
-        ...fixture.run,
-        ...route.request().postDataJSON(),
-        name:
-          route.request().postDataJSON().name || "New Market Basket Analysis",
-      };
-    else if (path.endsWith("/runs")) {
-      const search = (params.get("search") || "").toLowerCase();
-      const r = { ...fixture.run, dataset_name: fixture.dataset.name };
-      data = {
-        items:
-          !search ||
-          `${r.name} ${r.dataset_name}`.toLowerCase().includes(search)
-            ? [r]
-            : [],
-        total:
-          !search ||
-          `${r.name} ${r.dataset_name}`.toLowerCase().includes(search)
-            ? 1
-            : 0,
-        page: 1,
-        page_size: 10,
-      };
-    } else if (path.endsWith("/report.csv"))
-      return route.fulfill({
-        contentType: "text/csv",
-        body: "rank,product_a,product_b,lift\n1,A,B,1.5\n",
-      });
-    else if (path.endsWith("/rules")) {
-      const q = (params.get("search") || "").toLowerCase();
-      const rows = fixture.rules.filter(
-        (r) =>
-          (!q ||
-            `${r.antecedent_names} ${r.consequent_names}`
-              .toLowerCase()
-              .includes(q)) &&
-          r.support >= Number(params.get("min_support") || 0) &&
-          r.confidence >= Number(params.get("min_confidence") || 0) &&
-          r.lift >= Number(params.get("min_lift") || 0),
-      );
-      const offset = ((Number(params.get("page")) || 1) - 1) * 25;
-      data = { items: rows.slice(offset, offset + 25), total: rows.length };
-    } else if (path.endsWith("/adjacencies"))
-      data = {
-        items: fixture.pairs
-          .filter(
-            (p) =>
-              Math.max(p.confidence_a_b || 0, p.confidence_b_a || 0) >=
-              Number(params.get("min_confidence") || 0),
-          )
-          .slice(0, Number(params.get("page_size")) || 25),
-        total: fixture.pairs.filter(
-          (p) =>
-            Math.max(p.confidence_a_b || 0, p.confidence_b_a || 0) >=
-            Number(params.get("min_confidence") || 0),
-        ).length,
-      };
-    else if (path.endsWith("/report"))
-      data = {
-        run: fixture.run,
-        dataset: fixture.dataset,
-        recommendations: {
-          items: fixture.pairs.slice(0, 25),
-          total: fixture.pairs.length,
-        },
-        review: "Conceptual adjacency requires merchandising review.",
-      };
-    else
-      data =
-        route.request().method() === "PATCH"
-          ? { ...fixture.run, ...route.request().postDataJSON() }
-          : fixture.run;
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(data),
-    });
-  });
-}
-async function navigate(page, name) {
-  const button = page.getByRole("button", { name, exact: true });
-  if (page.viewportSize().width < 960) {
-    const trigger = page.getByRole("button", {
-      name: "Open navigation",
-      exact: true,
-    });
-    await expect(trigger).toBeVisible();
-    if (!(await button.isVisible())) await trigger.click();
-  }
-  await button.click();
-  await expect(page.getByText("Loading data…", { exact: true })).toHaveCount(0);
-}
-async function noOverflow(page) {
-  const shell = await page.evaluate(() => {
-    const sidebar = document.querySelector("aside.sidebar"),
-      workspace = document.querySelector(".workspace");
-    return sidebar && workspace
-      ? {
-          side: sidebar.getBoundingClientRect().right,
-          main: workspace.getBoundingClientRect().left,
-        }
-      : null;
-  });
-  if (shell) expect(shell.main).toBeGreaterThanOrEqual(shell.side - 1);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth + 1,
-    ),
-  ).toBe(true);
-}
-test("offline aggregate fixture: six screens, accessible dark/light, sidebar, history and report", async ({
+import {
+  setup,
+  fixture,
+  session,
+  names,
+  slugs,
+  navigate,
+  noOverflow,
+} from "./fixture";
+
+test("nine screens: actual browser captures, dark/light accessibility, selectors, history, graph and exports", async ({
   page,
 }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await setup(page);
-  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.setViewportSize({ width: 1672, height: 941 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
-  await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await expect(page.getByText("358", { exact: true })).toBeVisible();
-  await navigate(page, "Datasets");
-  await navigate(page, "Mining");
-  await page.goBack();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Datasets");
-  await page.goForward();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mining");
-  await navigate(page, "Overview");
   for (const theme of ["dark", "light"]) {
     if ((await page.locator("html").getAttribute("data-theme")) !== theme)
       await page
@@ -208,45 +27,38 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
         .click();
     for (const [i, name] of names.entries()) {
       await navigate(page, name);
-      await noOverflow(page);
+      await noOverflow(page, expect);
+      await expect(
+        page.getByRole("button", { name, exact: true }),
+      ).toHaveAttribute("aria-current", "page");
       const audit = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
         .analyze();
       expect(
         audit.violations.map((v) => ({
           id: v.id,
-          nodes: v.nodes.map((n) => n.target),
+          nodes: v.nodes.map((n) => ({
+            target: n.target,
+            detail: n.failureSummary,
+          })),
         })),
+        `${theme}/${name}`,
       ).toEqual([]);
       await page.screenshot({
-        animations: "disabled",
-        path: `test-results/improvements/after/${theme}-${i + 1}.png`,
+        path:
+          theme === "dark"
+            ? `../docs/screenshots/${slugs[i]}.png`
+            : `../test-results/redesign/after/light-${slugs[i]}.png`,
         fullPage: true,
+        animations: "disabled",
       });
     }
   }
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
-  await navigate(page, "Overview");
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
-  await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/sidebar-collapsed.png",
-    fullPage: true,
-  });
-  await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Expand sidebar" }),
-  ).toBeVisible();
-  await noOverflow(page);
-  await expect(
-    page.getByRole("button", { name: "Load a previous run" }),
-  ).toHaveCount(0);
-  await navigate(page, "Mining");
+  await navigate(page, "Association Rules");
   await page.getByRole("button", { name: "Load a previous run" }).click();
   const dialog = page.getByRole("dialog", { name: "Load a previous run" });
-  await expect(
-    dialog.getByRole("option", { name: new RegExp(fixture.run.name) }),
-  ).toBeVisible();
+  await expect(dialog.getByRole("listbox").getByRole("option")).toBeVisible();
   await dialog
     .getByRole("combobox", { name: "Search previous runs" })
     .fill("no-match");
@@ -254,73 +66,63 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
   await dialog.getByRole("combobox", { name: "Search previous runs" }).fill("");
   await expect(dialog.getByRole("listbox").getByRole("option")).toBeVisible();
   await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/run-selector.png",
+    path: "../docs/screenshots/run-selector.png",
     fullPage: true,
   });
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await page.getByRole("button", { name: "Open account menu" }).click();
-  await expect(
-    page.getByText("planner@example.invalid", { exact: true }).last(),
-  ).toBeVisible();
-  await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/account-menu.png",
-    fullPage: true,
-  });
-  await page
-    .getByRole("button", { name: "Profile settings and account information" })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Account information" }),
-  ).toBeVisible();
-  await expect(page.getByLabel("Display name")).toHaveValue(
-    "Isolated test account",
-  );
-  await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/account-profile.png",
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Send password reset" }).click();
-  await expect(
-    page.getByText(/reset instructions will arrive shortly/),
-  ).toBeVisible();
-  await navigate(page, "Product Layout");
-  await page
-    .getByRole("button", {
-      name: "GREEN REGENCY TEACUP AND SAUCER with PINK REGENCY TEACUP AND SAUCER",
-    })
-    .click();
-  await expect(page.getByText(/Co-purchased in/)).toBeVisible();
-  await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/graph-detail.png",
-    fullPage: true,
-  });
-  await page.getByRole("button", { name: "Reset view" }).click();
-  await page
-    .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
-    .fill("1");
+  await page.getByRole("button", { name: "Load a previous run" }).click();
+  await expect(dialog).toBeVisible();
+  await page.getByRole("heading", { level: 1 }).click();
+  await expect(dialog).toBeHidden();
+  await page.getByLabel("Search products").fill("no-product-exists");
   await expect(
     page.getByText("No qualifying results", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
-    .fill("0");
-  await expect(
-    page.getByRole("group", { name: "Product adjacency graph" }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Reset filters" }).click();
+  await expect(page.locator(".rules-table tbody tr")).toHaveCount(10);
+  await navigate(page, "Product Relationship Map");
+  await expect(page.locator(".graph-svg")).toBeVisible();
+  await page.locator(".graph-edge-group").first().focus();
+  await page.keyboard.press("Space");
+  await expect(page.locator(".graph-edge-group").first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.locator(".pair-rationale")).not.toBeEmpty();
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect(page.locator(".graph-legend")).toContainText("120%");
+  await page.getByRole("button", { name: "Fit to view", exact: true }).click();
+  await page.getByRole("button", { name: "Pan left" }).click();
+  await page.getByRole("button", { name: "Reset view" }).click();
+  await page.screenshot({
+    path: "../docs/screenshots/graph-inspection.png",
+    fullPage: true,
+  });
   await navigate(page, "Reports");
-  const download = page.waitForEvent("download");
-  await page
-    .getByRole("button", { name: "Export complete CSV report" })
-    .click();
-  expect((await download).suggestedFilename()).toMatch(/^recommendations-/);
+  const dl = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export complete CSV" }).click();
+  expect((await dl).suggestedFilename()).toContain("recommendations-");
+  await navigate(page, "Overview");
+  await page.getByRole("button", { name: "View All Runs →" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Mining Execution",
+  );
+  await navigate(page, "Overview");
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await noOverflow(page, expect);
+  await page.screenshot({
+    path: "../docs/screenshots/sidebar-collapsed.png",
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Expand sidebar" }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });
-test("offline fixture: responsive widths, mobile drawer dismissal and navigation", async ({
+
+test("all nine screens at six widths, touch navigation, back/forward and table scrolling", async ({
   page,
 }) => {
   await setup(page);
@@ -329,8 +131,10 @@ test("offline fixture: responsive widths, mobile drawer dismissal and navigation
   await expect(page.getByText("358", { exact: true })).toBeVisible();
   for (const width of [360, 390, 768, 1024, 1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
-    await navigate(page, "Overview");
-    await noOverflow(page);
+    for (const name of names) {
+      await navigate(page, name);
+      await noOverflow(page, expect);
+    }
     if (width < 960) {
       await page
         .getByRole("button", { name: "Open navigation", exact: true })
@@ -350,25 +154,81 @@ test("offline fixture: responsive widths, mobile drawer dismissal and navigation
         page.getByRole("dialog", { name: "Navigation" }),
       ).toBeHidden();
     }
-    for (const name of names) {
-      await navigate(page, name);
-      await noOverflow(page);
-    }
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await navigate(page, "Overview");
   await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/mobile-dashboard.png",
+    path: "../docs/screenshots/mobile-overview.png",
     fullPage: true,
   });
-  await navigate(page, "Reports");
+  await page
+    .getByRole("button", { name: "Open navigation", exact: true })
+    .click();
   await page.screenshot({
-    animations: "disabled",
-    path: "test-results/improvements/after/mobile-report.png",
+    path: "../docs/screenshots/mobile-navigation.png",
     fullPage: true,
   });
+  await page.keyboard.press("Escape");
+  await navigate(page, "Association Rules");
+  const table = page.getByRole("region", {
+    name: "Scrollable association rules",
+  });
+  await table.focus();
+  await table.press("ArrowRight");
+  await expect
+    .poll(() => table.evaluate((e) => e.scrollLeft))
+    .toBeGreaterThan(0);
+  await table.evaluate((e) => e.scrollIntoView({ block: "start" }));
+  const box = await table.boundingBox();
+  await page.mouse.move(box.x + 40, Math.max(20, box.y + 40));
+  const x = await table.evaluate((e) => e.scrollLeft);
+  await page.mouse.wheel(150, 0);
+  await expect
+    .poll(() => table.evaluate((e) => e.scrollLeft))
+    .toBeGreaterThan(x);
+  await page.setViewportSize({ width: 1024, height: 700 });
+  await navigate(page, "Reports");
+  const report = page.getByRole("region", {
+    name: "Scrollable recommendation report",
+  });
+  await report.scrollIntoViewIfNeeded();
+  await page.mouse.move(600, 450);
+  const y = await page.evaluate(() => scrollY);
+  await page.mouse.wheel(0, 350);
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(y);
+  await navigate(page, "Datasets");
+  await navigate(page, "Mining Configuration");
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Datasets");
+  await page.goForward();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "FP-Growth Configuration",
+  );
 });
+
+test("Account cold entry is isolated and profile actions never invalidate analytics", async ({
+  page,
+}) => {
+  await setup(page);
+  const paths = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/v1/")) paths.push(new URL(r.url()).pathname);
+  });
+  await page.goto("/#account");
+  await expect(page.getByLabel("Display name")).toHaveValue("Demo Planner");
+  expect(paths).toEqual(["/api/v1/account"]);
+  await page.getByLabel("Display name").fill("QA Planner");
+  await page.getByRole("button", { name: "Save profile", exact: true }).click();
+  await expect(page.getByText("Profile saved.")).toBeVisible();
+  expect(paths).toEqual(["/api/v1/account"]);
+  await expect(
+    page.getByRole("button", { name: "Dataset", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Load a previous run" }),
+  ).toHaveCount(0);
+});
+
 test("offline Auth service: protected entry, signup, recovery, login and logout", async ({
   page,
 }) => {
@@ -377,7 +237,7 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.screenshot({
     animations: "disabled",
-    path: "test-results/improvements/after/sign-in.png",
+    path: "../docs/screenshots/login.png",
     fullPage: true,
   });
   await page
@@ -385,7 +245,7 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
     .click();
   await page.screenshot({
     animations: "disabled",
-    path: "test-results/improvements/after/sign-up.png",
+    path: "../docs/screenshots/signup.png",
     fullPage: true,
   });
   await page.getByLabel("Display name").fill("Isolated test account");
@@ -468,50 +328,64 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(page.getByText("358", { exact: true })).toBeVisible();
 });
 
-test("table wheel scrolling reaches the page and retains horizontal access", async ({
+test("controlled lifecycle fixtures: queued, running and failed states without fabricated progress", async ({
   page,
 }) => {
   await setup(page);
-  await page.setViewportSize({ width: 1024, height: 700 });
-  await page.goto("/");
-  await expect(page.getByText("358", { exact: true })).toBeVisible();
-  for (const name of ["Datasets", "Association Rules", "Reports"]) {
-    await navigate(page, name);
-    const table = page.locator(".table-scroll").first();
-    await table.evaluate((element) =>
-      element.scrollIntoView({ block: "start" }),
-    );
-    const box = await table.boundingBox();
-    await page.mouse.move(
-      box.x + Math.min(box.width / 2, 200),
-      Math.max(20, box.y + 30),
-    );
-    const before = await page.evaluate(() => scrollY);
-    await page.mouse.wheel(0, 450);
-    await expect
-      .poll(() => page.evaluate(() => scrollY))
-      .toBeGreaterThan(before);
-    await page.mouse.move(1000, 300);
-    const outside = await page.evaluate(() => scrollY);
-    await page.mouse.wheel(0, -200);
-    await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(outside);
-  }
-  await page.setViewportSize({ width: 390, height: 844 });
-  await navigate(page, "Association Rules");
-  const rules = page.getByRole("region", {
-    name: "Scrollable association rules",
+  let status = "Queued";
+  let reads = 0;
+  await page.route(`**/api/v1/runs/${fixture.run.run_id}`, (route) => {
+    reads++;
+    return route.fulfill({
+      json: {
+        ...fixture.run,
+        status,
+        error:
+          status === "Failed"
+            ? "Dataset artifact is unavailable; upload or restore the source."
+            : null,
+        execution:
+          status === "Running"
+            ? { started_at: new Date(Date.now() - 3000).toISOString() }
+            : {},
+      },
+    });
   });
-  await rules.focus();
-  await rules.press("ArrowRight");
-  await expect
-    .poll(() => rules.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(0);
-  await rules.evaluate((element) => element.scrollIntoView({ block: "start" }));
-  const box = await rules.boundingBox();
-  await page.mouse.move(box.x + 50, Math.max(20, box.y + 50));
-  const before = await rules.evaluate((element) => element.scrollLeft);
-  await page.mouse.wheel(180, 0);
-  await expect
-    .poll(() => rules.evaluate((element) => element.scrollLeft))
-    .toBeGreaterThan(before);
+  await page.goto(`/#mining/execution?run=${fixture.run.run_id}`);
+  await expect(
+    page.getByText("Your analysis is waiting for an available mining worker."),
+  ).toBeVisible();
+  await expect(page.locator(".execution-panel")).not.toContainText(
+    "% complete",
+  );
+  await page.screenshot({
+    path: "../docs/screenshots/mining-queued.png",
+    fullPage: true,
+  });
+  status = "Running";
+  await expect(
+    page.getByText("Analysis in progress", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Elapsed since worker start/)).toBeVisible();
+  await page.screenshot({
+    path: "../docs/screenshots/mining-running.png",
+    fullPage: true,
+  });
+  status = "Failed";
+  await expect(page.getByRole("alert")).toContainText(
+    "Dataset artifact is unavailable",
+  );
+  await page.screenshot({
+    path: "../docs/screenshots/mining-failed.png",
+    fullPage: true,
+  });
+  const terminalReads = reads;
+  await page.waitForTimeout(1600);
+  expect(reads).toBe(terminalReads);
+  await page
+    .getByRole("button", { name: "Review configuration and retry" })
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "FP-Growth Configuration",
+  );
 });

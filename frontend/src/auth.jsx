@@ -10,6 +10,7 @@ import { createClient } from "@supabase/supabase-js";
 import { api } from "./api";
 import { Notice } from "./ui";
 import { config } from "./config";
+import Icon from "./Icon";
 
 const url = config.supabaseUrl;
 const key = config.supabasePublishableKey;
@@ -263,8 +264,54 @@ export function AuthScreen({
   }
   return (
     <main className="auth-shell">
+      <div className="auth-introduction">
+        <div className="brand">
+          <span className="brand-mark">
+            <Icon name="grid" />
+          </span>
+          <div>
+            <span>RetailAtlas</span>
+            <small>Retail Analytics Platform</small>
+          </div>
+        </div>
+        <h2>
+          Turn Retail Data into
+          <br />
+          Store Layout Decisions
+        </h2>
+        <p>
+          Mine purchase patterns, discover product associations and plan your
+          next merchandising review.
+        </p>
+        <div className="retail-illustration" aria-hidden="true">
+          <Icon name="network" />
+          <div className="illustration-shelves">
+            {[1, 2, 3].map((row) => (
+              <div key={row}>
+                {[1, 2, 3, 4, 5].map((column) => (
+                  <span key={column} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="auth-feature-row">
+          <span>
+            <Icon name="layers" />
+            FP-Growth mining
+          </span>
+          <span>
+            <Icon name="network" />
+            Product relationships
+          </span>
+          <span>
+            <Icon name="report" />
+            Explainable evidence
+          </span>
+        </div>
+      </div>
       <section className="panel auth-card">
-        <p className="eyebrow">Retail Store Layout Optimizer</p>
+        <p className="eyebrow">RetailAtlas · Retail Store Layout Optimizer</p>
         <h1>{titles[mode]}</h1>
         <p className="muted">FP-Growth · Retail Analytics Dashboard</p>
         {!supabase && (

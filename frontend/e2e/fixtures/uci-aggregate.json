@@ -1,0 +1,1593 @@
+{
+  "dataset": {
+    "dataset_id": "00000000-0000-4000-8000-000000000101",
+    "name": "UCI Online Retail Dataset",
+    "description": "UK-based online retail transaction data used for frequent-pattern mining and product-adjacency analysis.",
+    "source_organization": "UCI Machine Learning Repository",
+    "source_url": "https://archive.ics.uci.edu/dataset/352/online+retail",
+    "doi": "https://doi.org/10.24432/C5BW33",
+    "transaction_start": "2010-12-01",
+    "transaction_end": "2011-12-09",
+    "processing_status": "Ready",
+    "source": "UCI Online Retail \u2014 Chen (2015), CC BY 4.0",
+    "version": "2010-12-01\u20132011-12-09",
+    "basket_count": 20728,
+    "imported_at": "2026-11-26T13:45:39.960998Z",
+    "summary": {
+      "policy": "Sequential exclusions; all positive-quantity invoices retained; customer ID and unit price not required; invoice products deduplicated.",
+      "excluded": {
+        "cancelled": 9288,
+        "missing_invoice": 0,
+        "missing_product": 0,
+        "exact_duplicates": 5231,
+        "invalid_quantity": 1336
+      },
+      "basket_count": 20728,
+      "invalid_dates": 0,
+      "product_count": 3829,
+      "cleaned_records": 526054,
+      "transaction_end": "2011-12-09",
+      "metadata_version": 1,
+      "original_records": 541909,
+      "transaction_start": "2010-12-01",
+      "repeated_product_lines": 5306
+    },
+    "latest_run_id": "00000000-0000-4000-8000-000000000201",
+    "is_shared": true,
+    "checksum": "43465a06f2ccf7c8b5bd2892bc7defb52f97487934fe93b16ae4c3936424676d"
+  },
+  "run": {
+    "dataset_id": "00000000-0000-4000-8000-000000000101",
+    "name": "Baseline Market Basket Analysis",
+    "min_support": 0.02,
+    "min_confidence": 0.5,
+    "min_lift": 1.0,
+    "max_itemset_size": 3,
+    "run_id": "00000000-0000-4000-8000-000000000201",
+    "status": "Completed",
+    "created_at": "2026-11-27T03:21:10.807808Z",
+    "completed_at": "2026-11-27T03:21:23.081682Z",
+    "error": null,
+    "execution": {
+      "algorithm": "mlxtend FP-Growth",
+      "rule_count": 52,
+      "denominator": 20728,
+      "peak_rss_mb": 325.49609375,
+      "itemset_count": 358,
+      "adjacency_count": 38,
+      "elapsed_seconds": 1.9836679619984352
+    }
+  },
+  "rules": [
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003e8",
+      "antecedent": [
+        "22698"
+      ],
+      "consequent": [
+        "22697",
+        "22699"
+      ],
+      "antecedent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER",
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.70757180156658,
+      "lift": 19.097068102698
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003e9",
+      "antecedent": [
+        "22697",
+        "22699"
+      ],
+      "consequent": [
+        "22698"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER",
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.705729166666667,
+      "lift": 19.097068102698
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ea",
+      "antecedent": [
+        "22698",
+        "22699"
+      ],
+      "consequent": [
+        "22697"
+      ],
+      "antecedent_names": [
+        "PINK REGENCY TEACUP AND SAUCER",
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.904841402337229,
+      "lift": 18.4783769336415
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003eb",
+      "antecedent": [
+        "22697"
+      ],
+      "consequent": [
+        "22698",
+        "22699"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "PINK REGENCY TEACUP AND SAUCER",
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.533990147783251,
+      "lift": 18.4783769336415
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ec",
+      "antecedent": [
+        "22698"
+      ],
+      "consequent": [
+        "22697"
+      ],
+      "antecedent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0305384021613277,
+      "confidence": 0.826370757180157,
+      "lift": 16.8758749308673
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ed",
+      "antecedent": [
+        "22697"
+      ],
+      "consequent": [
+        "22698"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0305384021613277,
+      "confidence": 0.623645320197044,
+      "lift": 16.8758749308673
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ee",
+      "antecedent": [
+        "22697",
+        "22698"
+      ],
+      "consequent": [
+        "22699"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER",
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.856240126382307,
+      "lift": 16.6492920634638
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ef",
+      "antecedent": [
+        "22699"
+      ],
+      "consequent": [
+        "22697",
+        "22698"
+      ],
+      "antecedent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER",
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0261482053261289,
+      "confidence": 0.50844277673546,
+      "lift": 16.6492920634638
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f0",
+      "antecedent": [
+        "23300"
+      ],
+      "consequent": [
+        "23301"
+      ],
+      "antecedent_names": [
+        "GARDENERS KNEELING PAD CUP OF TEA"
+      ],
+      "consequent_names": [
+        "GARDENERS KNEELING PAD KEEP CALM"
+      ],
+      "support": 0.0263411810111926,
+      "confidence": 0.720316622691293,
+      "lift": 16.3534753068402
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f1",
+      "antecedent": [
+        "23301"
+      ],
+      "consequent": [
+        "23300"
+      ],
+      "antecedent_names": [
+        "GARDENERS KNEELING PAD KEEP CALM"
+      ],
+      "consequent_names": [
+        "GARDENERS KNEELING PAD CUP OF TEA"
+      ],
+      "support": 0.0263411810111926,
+      "confidence": 0.59802847754655,
+      "lift": 16.3534753068402
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f2",
+      "antecedent": [
+        "22698"
+      ],
+      "consequent": [
+        "22699"
+      ],
+      "antecedent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0288981088382864,
+      "confidence": 0.781984334203655,
+      "lift": 15.2054139581364
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f3",
+      "antecedent": [
+        "22699"
+      ],
+      "consequent": [
+        "22698"
+      ],
+      "antecedent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "PINK REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0288981088382864,
+      "confidence": 0.561913696060037,
+      "lift": 15.2054139581364
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f4",
+      "antecedent": [
+        "22697"
+      ],
+      "consequent": [
+        "22699"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0370513315322269,
+      "confidence": 0.756650246305419,
+      "lift": 14.7128014122127
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f5",
+      "antecedent": [
+        "22699"
+      ],
+      "consequent": [
+        "22697"
+      ],
+      "antecedent_names": [
+        "ROSES REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "support": 0.0370513315322269,
+      "confidence": 0.720450281425891,
+      "lift": 14.7128014122127
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f6",
+      "antecedent": [
+        "22630"
+      ],
+      "consequent": [
+        "22629"
+      ],
+      "antecedent_names": [
+        "DOLLY GIRL LUNCH BOX"
+      ],
+      "consequent_names": [
+        "SPACEBOY LUNCH BOX"
+      ],
+      "support": 0.0259552296410652,
+      "confidence": 0.632941176470588,
+      "lift": 14.5773385620915
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f7",
+      "antecedent": [
+        "22629"
+      ],
+      "consequent": [
+        "22630"
+      ],
+      "antecedent_names": [
+        "SPACEBOY LUNCH BOX"
+      ],
+      "consequent_names": [
+        "DOLLY GIRL LUNCH BOX"
+      ],
+      "support": 0.0259552296410652,
+      "confidence": 0.597777777777778,
+      "lift": 14.5773385620915
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f8",
+      "antecedent": [
+        "20724"
+      ],
+      "consequent": [
+        "22356"
+      ],
+      "antecedent_names": [
+        "RED RETROSPOT CHARLOTTE BAG"
+      ],
+      "consequent_names": [
+        "CHARLOTTE BAG PINK POLKADOT"
+      ],
+      "support": 0.0251833269008105,
+      "confidence": 0.504835589941973,
+      "lift": 14.08375788468
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003f9",
+      "antecedent": [
+        "22356"
+      ],
+      "consequent": [
+        "20724"
+      ],
+      "antecedent_names": [
+        "CHARLOTTE BAG PINK POLKADOT"
+      ],
+      "consequent_names": [
+        "RED RETROSPOT CHARLOTTE BAG"
+      ],
+      "support": 0.0251833269008105,
+      "confidence": 0.702557200538358,
+      "lift": 14.08375788468
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003fa",
+      "antecedent": [
+        "20723"
+      ],
+      "consequent": [
+        "20724"
+      ],
+      "antecedent_names": [
+        "STRAWBERRY CHARLOTTE BAG"
+      ],
+      "consequent_names": [
+        "RED RETROSPOT CHARLOTTE BAG"
+      ],
+      "support": 0.0234465457352374,
+      "confidence": 0.673130193905817,
+      "lift": 13.4938517014311
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003fb",
+      "antecedent": [
+        "20723"
+      ],
+      "consequent": [
+        "22355"
+      ],
+      "antecedent_names": [
+        "STRAWBERRY CHARLOTTE BAG"
+      ],
+      "consequent_names": [
+        "CHARLOTTE BAG SUKI DESIGN"
+      ],
+      "support": 0.020021227325357,
+      "confidence": 0.574792243767313,
+      "lift": 13.4929712670542
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003fc",
+      "antecedent": [
+        "22726"
+      ],
+      "consequent": [
+        "22727"
+      ],
+      "antecedent_names": [
+        "ALARM CLOCK BAKELIKE GREEN"
+      ],
+      "consequent_names": [
+        "ALARM CLOCK BAKELIKE RED"
+      ],
+      "support": 0.0308761096101891,
+      "confidence": 0.652395514780836,
+      "lift": 12.8666548338508
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003fd",
+      "antecedent": [
+        "22727"
+      ],
+      "consequent": [
+        "22726"
+      ],
+      "antecedent_names": [
+        "ALARM CLOCK BAKELIKE RED"
+      ],
+      "consequent_names": [
+        "ALARM CLOCK BAKELIKE GREEN"
+      ],
+      "support": 0.0308761096101891,
+      "confidence": 0.608943862987631,
+      "lift": 12.8666548338508
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003fe",
+      "antecedent": [
+        "22355"
+      ],
+      "consequent": [
+        "20719"
+      ],
+      "antecedent_names": [
+        "CHARLOTTE BAG SUKI DESIGN"
+      ],
+      "consequent_names": [
+        "WOODLAND CHARLOTTE BAG"
+      ],
+      "support": 0.0219992280972597,
+      "confidence": 0.516421291053228,
+      "lift": 12.8196173903608
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-0000000003ff",
+      "antecedent": [
+        "20719"
+      ],
+      "consequent": [
+        "22355"
+      ],
+      "antecedent_names": [
+        "WOODLAND CHARLOTTE BAG"
+      ],
+      "consequent_names": [
+        "CHARLOTTE BAG SUKI DESIGN"
+      ],
+      "support": 0.0219992280972597,
+      "confidence": 0.546107784431138,
+      "lift": 12.8196173903608
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000400",
+      "antecedent": [
+        "20719"
+      ],
+      "consequent": [
+        "20724"
+      ],
+      "antecedent_names": [
+        "WOODLAND CHARLOTTE BAG"
+      ],
+      "consequent_names": [
+        "RED RETROSPOT CHARLOTTE BAG"
+      ],
+      "support": 0.0244114241605558,
+      "confidence": 0.605988023952096,
+      "lift": 12.1478914511403
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000401",
+      "antecedent": [
+        "22910"
+      ],
+      "consequent": [
+        "22086"
+      ],
+      "antecedent_names": [
+        "PAPER CHAIN KIT VINTAGE CHRISTMAS"
+      ],
+      "consequent_names": [
+        "PAPER CHAIN KIT 50'S CHRISTMAS"
+      ],
+      "support": 0.0266306445387881,
+      "confidence": 0.673170731707317,
+      "lift": 12.0288645920942
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000402",
+      "antecedent": [
+        "22728"
+      ],
+      "consequent": [
+        "22727"
+      ],
+      "antecedent_names": [
+        "ALARM CLOCK BAKELIKE PINK"
+      ],
+      "consequent_names": [
+        "ALARM CLOCK BAKELIKE RED"
+      ],
+      "support": 0.0226746429949826,
+      "confidence": 0.600255427841635,
+      "lift": 11.8383392086598
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000403",
+      "antecedent": [
+        "22355"
+      ],
+      "consequent": [
+        "20724"
+      ],
+      "antecedent_names": [
+        "CHARLOTTE BAG SUKI DESIGN"
+      ],
+      "consequent_names": [
+        "RED RETROSPOT CHARLOTTE BAG"
+      ],
+      "support": 0.0244596680818217,
+      "confidence": 0.574178935447339,
+      "lift": 11.5102330502441
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000404",
+      "antecedent": [
+        "22728"
+      ],
+      "consequent": [
+        "22726"
+      ],
+      "antecedent_names": [
+        "ALARM CLOCK BAKELIKE PINK"
+      ],
+      "consequent_names": [
+        "ALARM CLOCK BAKELIKE GREEN"
+      ],
+      "support": 0.0201659590891548,
+      "confidence": 0.533844189016603,
+      "lift": 11.279839296571
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000405",
+      "antecedent": [
+        "82494L"
+      ],
+      "consequent": [
+        "82482"
+      ],
+      "antecedent_names": [
+        "WOODEN FRAME ANTIQUE WHITE"
+      ],
+      "consequent_names": [
+        "WOODEN PICTURE FRAME WHITE FINISH"
+      ],
+      "support": 0.0260034735623311,
+      "confidence": 0.554526748971193,
+      "lift": 10.4493004115226
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000406",
+      "antecedent": [
+        "23202"
+      ],
+      "consequent": [
+        "23203"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG VINTAGE LEAF"
+      ],
+      "consequent_names": [
+        "JUMBO BAG VINTAGE DOILY"
+      ],
+      "support": 0.024893863373215,
+      "confidence": 0.586363636363636,
+      "lift": 9.86537780401417
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000407",
+      "antecedent": [
+        "22470"
+      ],
+      "consequent": [
+        "22469"
+      ],
+      "antecedent_names": [
+        "HEART OF WICKER LARGE"
+      ],
+      "consequent_names": [
+        "HEART OF WICKER SMALL"
+      ],
+      "support": 0.0237842531840988,
+      "confidence": 0.531823085221144,
+      "lift": 9.17107230487842
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000408",
+      "antecedent": [
+        "20712"
+      ],
+      "consequent": [
+        "21931"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG WOODLAND ANIMALS"
+      ],
+      "consequent_names": [
+        "JUMBO STORAGE BAG SUKI"
+      ],
+      "support": 0.0216615206483983,
+      "confidence": 0.520278099652375,
+      "lift": 9.10838213648179
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000409",
+      "antecedent": [
+        "84991"
+      ],
+      "consequent": [
+        "21212"
+      ],
+      "antecedent_names": [
+        "60 TEATIME FAIRY CAKE CASES"
+      ],
+      "consequent_names": [
+        "PACK OF 72 RETROSPOT CAKE CASES"
+      ],
+      "support": 0.021854496333462,
+      "confidence": 0.547101449275362,
+      "lift": 8.59115063680281
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040a",
+      "antecedent": [
+        "22384"
+      ],
+      "consequent": [
+        "20725"
+      ],
+      "antecedent_names": [
+        "LUNCH BAG PINK POLKADOT"
+      ],
+      "consequent_names": [
+        "LUNCH BAG RED RETROSPOT"
+      ],
+      "support": 0.0292358162871478,
+      "confidence": 0.555963302752294,
+      "lift": 7.3635829645045
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040b",
+      "antecedent": [
+        "20726"
+      ],
+      "consequent": [
+        "20725"
+      ],
+      "antecedent_names": [
+        "LUNCH BAG WOODLAND"
+      ],
+      "consequent_names": [
+        "LUNCH BAG RED RETROSPOT"
+      ],
+      "support": 0.0253763025858742,
+      "confidence": 0.516699410609037,
+      "lift": 6.84354337578538
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040c",
+      "antecedent": [
+        "DOT"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "DOTCOM POSTAGE"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0233983018139714,
+      "confidence": 0.684062059238364,
+      "lift": 6.77783860606731
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040d",
+      "antecedent": [
+        "22383"
+      ],
+      "consequent": [
+        "20725"
+      ],
+      "antecedent_names": [
+        "LUNCH BAG SUKI DESIGN"
+      ],
+      "consequent_names": [
+        "LUNCH BAG RED RETROSPOT"
+      ],
+      "support": 0.0315997684291779,
+      "confidence": 0.509727626459144,
+      "lift": 6.75120398801606
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040e",
+      "antecedent": [
+        "22386"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG PINK POLKADOT"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0398012350443844,
+      "confidence": 0.677339901477833,
+      "lift": 6.71123397601936
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000040f",
+      "antecedent": [
+        "20727"
+      ],
+      "consequent": [
+        "20725"
+      ],
+      "antecedent_names": [
+        "LUNCH BAG  BLACK SKULL."
+      ],
+      "consequent_names": [
+        "LUNCH BAG RED RETROSPOT"
+      ],
+      "support": 0.030924353531455,
+      "confidence": 0.503534956794973,
+      "lift": 6.66918376002951
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000410",
+      "antecedent": [
+        "21928"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG SCANDINAVIAN BLUE PAISLEY"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.026099961404863,
+      "confidence": 0.6712158808933,
+      "lift": 6.65055582177645
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000411",
+      "antecedent": [
+        "85099F"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG STRAWBERRY"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0259069857197993,
+      "confidence": 0.650121065375303,
+      "lift": 6.44154371085051
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000412",
+      "antecedent": [
+        "85099C"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO  BAG BAROQUE BLACK WHITE"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0282226939405635,
+      "confidence": 0.627009646302251,
+      "lift": 6.21255064462383
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000413",
+      "antecedent": [
+        "22385"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG SPACEBOY DESIGN"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0207448861443458,
+      "confidence": 0.625,
+      "lift": 6.19263862332696
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000414",
+      "antecedent": [
+        "20712"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG WOODLAND ANIMALS"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0258104978772675,
+      "confidence": 0.619930475086906,
+      "lift": 6.14240864608097
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000415",
+      "antecedent": [
+        "21733"
+      ],
+      "consequent": [
+        "85123A"
+      ],
+      "antecedent_names": [
+        "RED HANGING HEART T-LIGHT HOLDER"
+      ],
+      "consequent_names": [
+        "WHITE HANGING HEART T-LIGHT HOLDER"
+      ],
+      "support": 0.0239772288691625,
+      "confidence": 0.670715249662618,
+      "lift": 6.12448709031134
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000416",
+      "antecedent": [
+        "21931"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO STORAGE BAG SUKI"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0349285989965264,
+      "confidence": 0.611486486486487,
+      "lift": 6.05874373417394
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000417",
+      "antecedent": [
+        "21929"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG PINK VINTAGE PAISLEY"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0249903512157468,
+      "confidence": 0.598843930635838,
+      "lift": 5.93347848672068
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000418",
+      "antecedent": [
+        "22411"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO SHOPPER VINTAGE RED PAISLEY"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0328058664608259,
+      "confidence": 0.578723404255319,
+      "lift": 5.7341198486636
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-000000000419",
+      "antecedent": [
+        "23199"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "JUMBO BAG APPLES"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.0263411810111926,
+      "confidence": 0.558282208588957,
+      "lift": 5.5315839481988
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000041a",
+      "antecedent": [
+        "22379"
+      ],
+      "consequent": [
+        "85099B"
+      ],
+      "antecedent_names": [
+        "RECYCLING BAG RETROSPOT"
+      ],
+      "consequent_names": [
+        "JUMBO BAG RED RETROSPOT"
+      ],
+      "support": 0.020021227325357,
+      "confidence": 0.554812834224599,
+      "lift": 5.4972086174988
+    },
+    {
+      "rule_id": "00000000-0000-0000-0000-00000000041b",
+      "antecedent": [
+        "22697"
+      ],
+      "consequent": [
+        "22423"
+      ],
+      "antecedent_names": [
+        "GREEN REGENCY TEACUP AND SAUCER"
+      ],
+      "consequent_names": [
+        "REGENCY CAKESTAND 3 TIER"
+      ],
+      "support": 0.0245561559243535,
+      "confidence": 0.501477832512315,
+      "lift": 5.22605958386892
+    }
+  ],
+  "pairs": [
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d0",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22697",
+      "product_b": "22698",
+      "support": 0.0305384021613277,
+      "confidence_a_b": 0.623645320197044,
+      "confidence_b_a": 0.826370757180157,
+      "lift": 16.8758749308673,
+      "rank": 1,
+      "rationale": "Co-purchased in 3.1% of eligible baskets; lift 16.88. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "GREEN REGENCY TEACUP AND SAUCER",
+      "name_b": "PINK REGENCY TEACUP AND SAUCER"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d1",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "23300",
+      "product_b": "23301",
+      "support": 0.0263411810111926,
+      "confidence_a_b": 0.720316622691293,
+      "confidence_b_a": 0.59802847754655,
+      "lift": 16.3534753068402,
+      "rank": 2,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 16.35. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "GARDENERS KNEELING PAD CUP OF TEA",
+      "name_b": "GARDENERS KNEELING PAD KEEP CALM"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d2",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22698",
+      "product_b": "22699",
+      "support": 0.0288981088382864,
+      "confidence_a_b": 0.781984334203655,
+      "confidence_b_a": 0.561913696060037,
+      "lift": 15.2054139581364,
+      "rank": 3,
+      "rationale": "Co-purchased in 2.9% of eligible baskets; lift 15.21. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "PINK REGENCY TEACUP AND SAUCER",
+      "name_b": "ROSES REGENCY TEACUP AND SAUCER"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d3",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22697",
+      "product_b": "22699",
+      "support": 0.0370513315322269,
+      "confidence_a_b": 0.756650246305419,
+      "confidence_b_a": 0.720450281425891,
+      "lift": 14.7128014122127,
+      "rank": 4,
+      "rationale": "Co-purchased in 3.7% of eligible baskets; lift 14.71. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "GREEN REGENCY TEACUP AND SAUCER",
+      "name_b": "ROSES REGENCY TEACUP AND SAUCER"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d4",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22629",
+      "product_b": "22630",
+      "support": 0.0259552296410652,
+      "confidence_a_b": 0.597777777777778,
+      "confidence_b_a": 0.632941176470588,
+      "lift": 14.5773385620915,
+      "rank": 5,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 14.58. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "SPACEBOY LUNCH BOX",
+      "name_b": "DOLLY GIRL LUNCH BOX"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d5",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20724",
+      "product_b": "22356",
+      "support": 0.0251833269008105,
+      "confidence_a_b": 0.504835589941973,
+      "confidence_b_a": 0.702557200538358,
+      "lift": 14.08375788468,
+      "rank": 6,
+      "rationale": "Co-purchased in 2.5% of eligible baskets; lift 14.08. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "RED RETROSPOT CHARLOTTE BAG",
+      "name_b": "CHARLOTTE BAG PINK POLKADOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d6",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20723",
+      "product_b": "20724",
+      "support": 0.0234465457352374,
+      "confidence_a_b": 0.673130193905817,
+      "confidence_b_a": null,
+      "lift": 13.4938517014311,
+      "rank": 7,
+      "rationale": "Co-purchased in 2.3% of eligible baskets; lift 13.49. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "STRAWBERRY CHARLOTTE BAG",
+      "name_b": "RED RETROSPOT CHARLOTTE BAG"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d7",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20723",
+      "product_b": "22355",
+      "support": 0.020021227325357,
+      "confidence_a_b": 0.574792243767313,
+      "confidence_b_a": null,
+      "lift": 13.4929712670542,
+      "rank": 8,
+      "rationale": "Co-purchased in 2.0% of eligible baskets; lift 13.49. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "STRAWBERRY CHARLOTTE BAG",
+      "name_b": "CHARLOTTE BAG SUKI DESIGN"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d8",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22726",
+      "product_b": "22727",
+      "support": 0.0308761096101891,
+      "confidence_a_b": 0.652395514780836,
+      "confidence_b_a": 0.608943862987631,
+      "lift": 12.8666548338508,
+      "rank": 9,
+      "rationale": "Co-purchased in 3.1% of eligible baskets; lift 12.87. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "ALARM CLOCK BAKELIKE GREEN",
+      "name_b": "ALARM CLOCK BAKELIKE RED"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007d9",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20719",
+      "product_b": "22355",
+      "support": 0.0219992280972597,
+      "confidence_a_b": 0.546107784431138,
+      "confidence_b_a": 0.516421291053228,
+      "lift": 12.8196173903608,
+      "rank": 10,
+      "rationale": "Co-purchased in 2.2% of eligible baskets; lift 12.82. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "WOODLAND CHARLOTTE BAG",
+      "name_b": "CHARLOTTE BAG SUKI DESIGN"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007da",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20719",
+      "product_b": "20724",
+      "support": 0.0244114241605558,
+      "confidence_a_b": 0.605988023952096,
+      "confidence_b_a": null,
+      "lift": 12.1478914511403,
+      "rank": 11,
+      "rationale": "Co-purchased in 2.4% of eligible baskets; lift 12.15. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "WOODLAND CHARLOTTE BAG",
+      "name_b": "RED RETROSPOT CHARLOTTE BAG"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007db",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22086",
+      "product_b": "22910",
+      "support": 0.0266306445387881,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.673170731707317,
+      "lift": 12.0288645920942,
+      "rank": 12,
+      "rationale": "Co-purchased in 2.7% of eligible baskets; lift 12.03. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "PAPER CHAIN KIT 50'S CHRISTMAS",
+      "name_b": "PAPER CHAIN KIT VINTAGE CHRISTMAS"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007dc",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22727",
+      "product_b": "22728",
+      "support": 0.0226746429949826,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.600255427841635,
+      "lift": 11.8383392086598,
+      "rank": 13,
+      "rationale": "Co-purchased in 2.3% of eligible baskets; lift 11.84. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "ALARM CLOCK BAKELIKE RED",
+      "name_b": "ALARM CLOCK BAKELIKE PINK"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007dd",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20724",
+      "product_b": "22355",
+      "support": 0.0244596680818217,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.574178935447339,
+      "lift": 11.5102330502441,
+      "rank": 14,
+      "rationale": "Co-purchased in 2.4% of eligible baskets; lift 11.51. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "RED RETROSPOT CHARLOTTE BAG",
+      "name_b": "CHARLOTTE BAG SUKI DESIGN"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007de",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22726",
+      "product_b": "22728",
+      "support": 0.0201659590891548,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.533844189016603,
+      "lift": 11.279839296571,
+      "rank": 15,
+      "rationale": "Co-purchased in 2.0% of eligible baskets; lift 11.28. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "ALARM CLOCK BAKELIKE GREEN",
+      "name_b": "ALARM CLOCK BAKELIKE PINK"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007df",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "82482",
+      "product_b": "82494L",
+      "support": 0.0260034735623311,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.554526748971193,
+      "lift": 10.4493004115226,
+      "rank": 16,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 10.45. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "WOODEN PICTURE FRAME WHITE FINISH",
+      "name_b": "WOODEN FRAME ANTIQUE WHITE"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e0",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "23202",
+      "product_b": "23203",
+      "support": 0.024893863373215,
+      "confidence_a_b": 0.586363636363636,
+      "confidence_b_a": null,
+      "lift": 9.86537780401417,
+      "rank": 17,
+      "rationale": "Co-purchased in 2.5% of eligible baskets; lift 9.87. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG VINTAGE LEAF",
+      "name_b": "JUMBO BAG VINTAGE DOILY"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e1",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22469",
+      "product_b": "22470",
+      "support": 0.0237842531840988,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.531823085221144,
+      "lift": 9.17107230487842,
+      "rank": 18,
+      "rationale": "Co-purchased in 2.4% of eligible baskets; lift 9.17. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "HEART OF WICKER SMALL",
+      "name_b": "HEART OF WICKER LARGE"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e2",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20712",
+      "product_b": "21931",
+      "support": 0.0216615206483983,
+      "confidence_a_b": 0.520278099652375,
+      "confidence_b_a": null,
+      "lift": 9.10838213648179,
+      "rank": 19,
+      "rationale": "Co-purchased in 2.2% of eligible baskets; lift 9.11. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG WOODLAND ANIMALS",
+      "name_b": "JUMBO STORAGE BAG SUKI"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e3",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "21212",
+      "product_b": "84991",
+      "support": 0.021854496333462,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.547101449275362,
+      "lift": 8.59115063680281,
+      "rank": 20,
+      "rationale": "Co-purchased in 2.2% of eligible baskets; lift 8.59. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "PACK OF 72 RETROSPOT CAKE CASES",
+      "name_b": "60 TEATIME FAIRY CAKE CASES"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e4",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20725",
+      "product_b": "22384",
+      "support": 0.0292358162871478,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.555963302752294,
+      "lift": 7.3635829645045,
+      "rank": 21,
+      "rationale": "Co-purchased in 2.9% of eligible baskets; lift 7.36. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "LUNCH BAG RED RETROSPOT",
+      "name_b": "LUNCH BAG PINK POLKADOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e5",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20725",
+      "product_b": "20726",
+      "support": 0.0253763025858742,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.516699410609037,
+      "lift": 6.84354337578538,
+      "rank": 22,
+      "rationale": "Co-purchased in 2.5% of eligible baskets; lift 6.84. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "LUNCH BAG RED RETROSPOT",
+      "name_b": "LUNCH BAG WOODLAND"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e6",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "85099B",
+      "product_b": "DOT",
+      "support": 0.0233983018139714,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.684062059238364,
+      "lift": 6.77783860606731,
+      "rank": 23,
+      "rationale": "Co-purchased in 2.3% of eligible baskets; lift 6.78. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG RED RETROSPOT",
+      "name_b": "DOTCOM POSTAGE"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e7",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20725",
+      "product_b": "22383",
+      "support": 0.0315997684291779,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.509727626459144,
+      "lift": 6.75120398801606,
+      "rank": 24,
+      "rationale": "Co-purchased in 3.2% of eligible baskets; lift 6.75. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "LUNCH BAG RED RETROSPOT",
+      "name_b": "LUNCH BAG SUKI DESIGN"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e8",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22386",
+      "product_b": "85099B",
+      "support": 0.0398012350443844,
+      "confidence_a_b": 0.677339901477833,
+      "confidence_b_a": null,
+      "lift": 6.71123397601936,
+      "rank": 25,
+      "rationale": "Co-purchased in 4.0% of eligible baskets; lift 6.71. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG PINK POLKADOT",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007e9",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20725",
+      "product_b": "20727",
+      "support": 0.030924353531455,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.503534956794973,
+      "lift": 6.66918376002951,
+      "rank": 26,
+      "rationale": "Co-purchased in 3.1% of eligible baskets; lift 6.67. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "LUNCH BAG RED RETROSPOT",
+      "name_b": "LUNCH BAG  BLACK SKULL."
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007ea",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "21928",
+      "product_b": "85099B",
+      "support": 0.026099961404863,
+      "confidence_a_b": 0.6712158808933,
+      "confidence_b_a": null,
+      "lift": 6.65055582177645,
+      "rank": 27,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 6.65. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG SCANDINAVIAN BLUE PAISLEY",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007eb",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "85099B",
+      "product_b": "85099F",
+      "support": 0.0259069857197993,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.650121065375303,
+      "lift": 6.44154371085051,
+      "rank": 28,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 6.44. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG RED RETROSPOT",
+      "name_b": "JUMBO BAG STRAWBERRY"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007ec",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "85099B",
+      "product_b": "85099C",
+      "support": 0.0282226939405635,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.627009646302251,
+      "lift": 6.21255064462383,
+      "rank": 29,
+      "rationale": "Co-purchased in 2.8% of eligible baskets; lift 6.21. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG RED RETROSPOT",
+      "name_b": "JUMBO  BAG BAROQUE BLACK WHITE"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007ed",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22385",
+      "product_b": "85099B",
+      "support": 0.0207448861443458,
+      "confidence_a_b": 0.625,
+      "confidence_b_a": null,
+      "lift": 6.19263862332696,
+      "rank": 30,
+      "rationale": "Co-purchased in 2.1% of eligible baskets; lift 6.19. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG SPACEBOY DESIGN",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007ee",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "20712",
+      "product_b": "85099B",
+      "support": 0.0258104978772675,
+      "confidence_a_b": 0.619930475086906,
+      "confidence_b_a": null,
+      "lift": 6.14240864608097,
+      "rank": 31,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 6.14. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG WOODLAND ANIMALS",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007ef",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "21733",
+      "product_b": "85123A",
+      "support": 0.0239772288691625,
+      "confidence_a_b": 0.670715249662618,
+      "confidence_b_a": null,
+      "lift": 6.12448709031134,
+      "rank": 32,
+      "rationale": "Co-purchased in 2.4% of eligible baskets; lift 6.12. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "RED HANGING HEART T-LIGHT HOLDER",
+      "name_b": "WHITE HANGING HEART T-LIGHT HOLDER"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f0",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "21931",
+      "product_b": "85099B",
+      "support": 0.0349285989965264,
+      "confidence_a_b": 0.611486486486487,
+      "confidence_b_a": null,
+      "lift": 6.05874373417394,
+      "rank": 33,
+      "rationale": "Co-purchased in 3.5% of eligible baskets; lift 6.06. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO STORAGE BAG SUKI",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f1",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "21929",
+      "product_b": "85099B",
+      "support": 0.0249903512157468,
+      "confidence_a_b": 0.598843930635838,
+      "confidence_b_a": null,
+      "lift": 5.93347848672068,
+      "rank": 34,
+      "rationale": "Co-purchased in 2.5% of eligible baskets; lift 5.93. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG PINK VINTAGE PAISLEY",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f2",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22411",
+      "product_b": "85099B",
+      "support": 0.0328058664608259,
+      "confidence_a_b": 0.578723404255319,
+      "confidence_b_a": null,
+      "lift": 5.7341198486636,
+      "rank": 35,
+      "rationale": "Co-purchased in 3.3% of eligible baskets; lift 5.73. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO SHOPPER VINTAGE RED PAISLEY",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f3",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "23199",
+      "product_b": "85099B",
+      "support": 0.0263411810111926,
+      "confidence_a_b": 0.558282208588957,
+      "confidence_b_a": null,
+      "lift": 5.5315839481988,
+      "rank": 36,
+      "rationale": "Co-purchased in 2.6% of eligible baskets; lift 5.53. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "JUMBO BAG APPLES",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f4",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22379",
+      "product_b": "85099B",
+      "support": 0.020021227325357,
+      "confidence_a_b": 0.554812834224599,
+      "confidence_b_a": null,
+      "lift": 5.4972086174988,
+      "rank": 37,
+      "rationale": "Co-purchased in 2.0% of eligible baskets; lift 5.50. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "RECYCLING BAG RETROSPOT",
+      "name_b": "JUMBO BAG RED RETROSPOT"
+    },
+    {
+      "adjacency_id": "00000000-0000-0000-0000-0000000007f5",
+      "run_id": "00000000-0000-4000-8000-000000000201",
+      "dataset_id": "00000000-0000-4000-8000-000000000101",
+      "product_a": "22423",
+      "product_b": "22697",
+      "support": 0.0245561559243535,
+      "confidence_a_b": null,
+      "confidence_b_a": 0.501477832512315,
+      "lift": 5.22605958386892,
+      "rank": 38,
+      "rationale": "Co-purchased in 2.5% of eligible baskets; lift 5.23. Review merchandising feasibility. Missing confidence means that direction did not qualify.",
+      "name_a": "REGENCY CAKESTAND 3 TIER",
+      "name_b": "GREEN REGENCY TEACUP AND SAUCER"
+    }
+  ],
+  "_fixture": {
+    "description": "Public UCI aggregate regression fixture; IDs replaced with deterministic test IDs. Never imported by application code.",
+    "source": "https://archive.ics.uci.edu/dataset/352/online+retail",
+    "license": "CC BY 4.0",
+    "verified_counts": [
+      358,
+      52,
+      38
+    ]
+  }
+}

@@ -1,36 +1,35 @@
 import { useId, useMemo, useState } from "react";
 import Icon from "./Icon";
-export const pct = (value) =>
-  value == null ? "Unavailable" : `${(value * 100).toFixed(2)}%`;
+import { SearchSelect } from "./Selectors";
+import { layoutGraph, wrapLabel } from "./graph-layout";
+import { pct } from "./format";
+export { pct } from "./format";
 export function PairDetails({ pair }) {
   return pair ? (
     <div className="pair-details">
       <h3>{pair.name_a}</h3>
-      <span className="pair-connector">paired with</span>
+      <span className="product-code">Code: {pair.product_a}</span>
+      <span className="pair-connector">↔</span>
       <h3>{pair.name_b}</h3>
+      <span className="product-code">Code: {pair.product_b}</span>
       <dl className="pair-metrics">
         {[
           ["Support", pct(pair.support)],
           ["Lift", pair.lift.toFixed(3)],
           ["Confidence A to B", pct(pair.confidence_a_b)],
           ["Confidence B to A", pct(pair.confidence_b_a)],
-        ].map(([title, value]) => (
-          <div key={title}>
-            <dt>{title}</dt>
-            <dd>{value}</dd>
+        ].map(([t, v]) => (
+          <div key={t}>
+            <dt>{t}</dt>
+            <dd>{v}</dd>
           </div>
         ))}
       </dl>
+      <h3>Recommendation evidence</h3>
       <p className="pair-rationale">{pair.rationale}</p>
     </div>
   ) : (
-    <div className="graph-empty">
-      <span className="guide-icon">
-        <Icon name="network" />
-      </span>
-      <h3>Inspect a connection</h3>
-      <p className="muted">Select a relationship to inspect its evidence.</p>
-    </div>
+    <p className="muted">Select a relationship to inspect its evidence.</p>
   );
 }
 function activate(event, action) {
@@ -39,98 +38,59 @@ function activate(event, action) {
     action();
   }
 }
-export default function Graph({ pairs }) {
-  const [selected, setSelected] = useState(null),
+export default function Graph({ pairs, filters }) {
+  const [selected, setSelected] = useState(pairs[0] || null),
     [product, setProduct] = useState(""),
     [zoom, setZoom] = useState(1),
     [pan, setPan] = useState({ x: 0, y: 0 }),
     [drag, setDrag] = useState(null);
+  const graph = useMemo(() => layoutGraph(pairs), [pairs]);
   const patternId = useId().replaceAll(":", "");
-  const labels = useMemo(
-    () =>
-      Object.fromEntries(
-        pairs.flatMap((p) => [
-          [p.product_a, p.name_a],
-          [p.product_b, p.name_b],
-        ]),
-      ),
-    [pairs],
+  const w = graph.width,
+    h = graph.height;
+  const connected = new Set(
+    pairs
+      .filter(
+        (p) => !product || p.product_a === product || p.product_b === product,
+      )
+      .flatMap((p) => [p.product_a, p.product_b]),
   );
-  const nodes = useMemo(() => {
-    const points = [
-      ...new Set(pairs.flatMap((p) => [p.product_a, p.product_b])),
-    ].map((id, i, all) => {
-      const cosine = Math.cos((i / all.length) * 2 * Math.PI);
-      return {
-        id,
-        x: 400 + 190 * cosine,
-        y: 300 + 210 * Math.sin((i / all.length) * 2 * Math.PI),
-        side: cosine >= 0 ? "right" : "left",
-        labelX: cosine >= 0 ? 790 : 10,
-        anchor: cosine >= 0 ? "end" : "start",
-      };
-    });
-    for (const side of ["left", "right"]) {
-      const group = points
-        .filter((point) => point.side === side)
-        .sort((a, b) => a.y - b.y);
-      group.forEach((point, index) => {
-        point.labelY =
-          group.length === 1 ? 300 : 55 + (index / (group.length - 1)) * 490;
-      });
-    }
-    return points;
-  }, [pairs]);
-  const positions = Object.fromEntries(nodes.map((node) => [node.id, node]));
   function reset() {
     setZoom(1);
     setPan({ x: 0, y: 0 });
-    setProduct("");
-    setSelected(null);
   }
   return (
     <>
-      <div className="graph-controls">
-        <label>
-          <span>Focus product</span>
-          <select value={product} onChange={(e) => setProduct(e.target.value)}>
-            <option value="">All products</option>
-            {nodes.map((node) => (
-              <option value={node.id} key={node.id}>
-                {labels[node.id]} ({node.id})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="zoom-control">
-          Zoom · {Math.round(zoom * 100)}%
-          <input
-            aria-label="Zoom"
-            type="range"
-            min=".5"
-            max="3"
-            step=".1"
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-          />
-        </label>
-        <button type="button" className="button secondary" onClick={reset}>
-          <Icon name="refresh" />
-          Reset view
-        </button>
+      <div className="graph-local-toolbar">
+        {filters}
+        <SearchSelect
+          label="Focus product"
+          value={product}
+          options={[
+            { value: "", label: "All products" },
+            ...graph.nodes.map((n) => ({
+              value: n.id,
+              label: n.label,
+              detail: n.id,
+            })),
+          ]}
+          onChange={setProduct}
+        />
+        <span className="muted">
+          {graph.nodes.length} products · {graph.groups} connected{" "}
+          {graph.groups === 1 ? "group" : "groups"}
+        </span>
+        <span className="confidence-mode">
+          Confidence: either qualifying direction
+        </span>
       </div>
-      <p className="graph-caption">
-        <Icon name="info" />
-        Conceptual adjacency, not a physical floor plan. This page shows up to
-        25 ranked relationships.
-      </p>
       <div className="graph-layout">
-        <div>
+        <div className="graph-canvas-container">
           <fieldset className="graph-canvas">
             <legend className="sr-only">Product adjacency graph</legend>
             <svg
               role="presentation"
-              viewBox="0 0 800 600"
+              viewBox={`0 0 ${w} ${h}`}
               className="graph-svg"
               onPointerDown={(e) => {
                 if (e.target.closest("[data-interactive]")) return;
@@ -140,7 +100,7 @@ export default function Graph({ pairs }) {
               onPointerMove={(e) => {
                 if (drag) {
                   const scale =
-                    800 / e.currentTarget.getBoundingClientRect().width;
+                    w / e.currentTarget.getBoundingClientRect().width;
                   setPan({
                     x: drag.pan.x + (e.clientX - drag.x) * scale,
                     y: drag.pan.y + (e.clientY - drag.y) * scale,
@@ -161,98 +121,142 @@ export default function Graph({ pairs }) {
                   <circle className="graph-grid-dot" cx="2" cy="2" r="1" />
                 </pattern>
               </defs>
-              <rect width="800" height="600" fill={`url(#${patternId})`} />
+              <rect width={w} height={h} fill={`url(#${patternId})`} />
               <g
-                transform={`translate(${pan.x} ${pan.y}) translate(400 300) scale(${zoom}) translate(-400 -300)`}
+                transform={`translate(${pan.x} ${pan.y}) translate(${w / 2} ${h / 2}) scale(${zoom}) translate(${-w / 2} ${-h / 2})`}
               >
-                {pairs
-                  .filter(
-                    (pair) =>
-                      !product ||
-                      pair.product_a === product ||
-                      pair.product_b === product,
-                  )
-                  .map((pair) => (
-                    <g
-                      className="graph-edge-group"
-                      data-interactive="true"
-                      key={pair.rank}
-                      role="button"
-                      tabIndex="0"
-                      aria-label={`${pair.name_a} with ${pair.name_b}`}
-                      aria-pressed={selected?.rank === pair.rank}
-                      onClick={() => setSelected(pair)}
-                      onKeyDown={(e) => activate(e, () => setSelected(pair))}
-                    >
-                      <line
-                        className={`graph-edge ${selected?.rank === pair.rank ? "active" : ""}`}
-                        x1={positions[pair.product_a].x}
-                        y1={positions[pair.product_a].y}
-                        x2={positions[pair.product_b].x}
-                        y2={positions[pair.product_b].y}
-                      />
-                      <line
-                        className="graph-hit-area"
-                        x1={positions[pair.product_a].x}
-                        y1={positions[pair.product_a].y}
-                        x2={positions[pair.product_b].x}
-                        y2={positions[pair.product_b].y}
-                      />
-                      <title>
-                        {pair.name_a} + {pair.name_b}; lift{" "}
-                        {pair.lift.toFixed(2)}
-                      </title>
-                    </g>
-                  ))}
-                {nodes.map((node) => (
+                {graph.edges.map(({ source: a, target: b, pair: p }) => (
                   <g
+                    className={`graph-edge-group ${product && p.product_a !== product && p.product_b !== product ? "dimmed" : ""}`}
+                    key={p.rank}
                     data-interactive="true"
-                    key={node.id}
                     role="button"
                     tabIndex="0"
-                    aria-label={`Focus product ${labels[node.id]}`}
-                    aria-pressed={product === node.id}
-                    onClick={() => setProduct(node.id)}
-                    onKeyDown={(e) => activate(e, () => setProduct(node.id))}
+                    aria-label={`${p.name_a} with ${p.name_b}`}
+                    aria-pressed={selected?.rank === p.rank}
+                    onClick={() => setSelected(p)}
+                    onKeyDown={(e) => activate(e, () => setSelected(p))}
                   >
-                    <circle
-                      className={`graph-node ${product === node.id ? "selected" : ""}`}
-                      cx={node.x}
-                      cy={node.y}
-                      r="15"
+                    <line
+                      className={`graph-edge ${selected?.rank === p.rank ? "active" : ""}`}
+                      x1={a.x}
+                      y1={a.y}
+                      x2={b.x}
+                      y2={b.y}
                     />
                     <line
-                      className="graph-label-guide"
-                      x1={node.x}
-                      y1={node.y}
-                      x2={node.side === "right" ? 620 : 180}
-                      y2={node.labelY - 4}
-                      aria-hidden="true"
+                      className="graph-hit-area"
+                      x1={a.x}
+                      y1={a.y}
+                      x2={b.x}
+                      y2={b.y}
                     />
-                    <text
-                      className="graph-node-label"
-                      x={node.labelX}
-                      y={node.labelY}
-                      textAnchor={node.anchor}
-                    >
-                      {(labels[node.id] || node.id).length > 25
-                        ? `${(labels[node.id] || node.id).slice(0, 24)}…`
-                        : labels[node.id] || node.id}
+                    {selected?.rank === p.rank && (
+                      <g className="edge-metric" aria-hidden="true">
+                        <rect
+                          x={(a.x + b.x) / 2 - 37}
+                          y={(a.y + b.y) / 2 - 12}
+                          width="74"
+                          height="24"
+                          rx="5"
+                        />
+                        <text
+                          x={(a.x + b.x) / 2}
+                          y={(a.y + b.y) / 2 + 4}
+                          textAnchor="middle"
+                        >
+                          Lift {p.lift.toFixed(2)}
+                        </text>
+                      </g>
+                    )}
+                    <title>
+                      {p.name_a} ↔ {p.name_b}; lift {p.lift.toFixed(2)}
+                    </title>
+                  </g>
+                ))}
+                {graph.nodes.map((n) => (
+                  <g
+                    className={`graph-product group-${n.group % 5} ${product && !connected.has(n.id) ? "dimmed" : ""}`}
+                    key={n.id}
+                    data-interactive="true"
+                    role="button"
+                    tabIndex="0"
+                    aria-label={`Focus product ${n.label}`}
+                    aria-pressed={product === n.id}
+                    onClick={() => {
+                      setProduct(n.id);
+                      setSelected(
+                        pairs.find(
+                          (p) => p.product_a === n.id || p.product_b === n.id,
+                        ),
+                      );
+                    }}
+                    onKeyDown={(e) =>
+                      activate(e, () => {
+                        setProduct(n.id);
+                        setSelected(
+                          pairs.find(
+                            (p) => p.product_a === n.id || p.product_b === n.id,
+                          ),
+                        );
+                      })
+                    }
+                  >
+                    <rect
+                      className={`graph-node ${product === n.id ? "selected" : ""}`}
+                      x={n.x - 78}
+                      y={n.y - 36}
+                      width="156"
+                      height="72"
+                      rx="9"
+                    />
+                    <text className="graph-node-label" textAnchor="middle">
+                      {wrapLabel(n.label).map((line, i, lines) => (
+                        <tspan
+                          x={n.x}
+                          y={n.y - (lines.length - 1) * 7 + i * 14}
+                          key={i}
+                        >
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
-                    <title>{labels[node.id]}</title>
+                    <title>
+                      {n.label} ({n.id}) · connected group {n.group + 1}
+                    </title>
                   </g>
                 ))}
               </g>
             </svg>
+            <div className="graph-view-controls">
+              {[
+                ["Fit to view", reset, "⛶"],
+                ["Zoom in", () => setZoom((z) => Math.min(3, z + 0.2)), "+"],
+                ["Zoom out", () => setZoom((z) => Math.max(0.4, z - 0.2)), "−"],
+                [
+                  "Reset view",
+                  () => {
+                    reset();
+                    setProduct("");
+                    setSelected(null);
+                  },
+                  "↺",
+                ],
+              ].map(([label, action, symbol]) => (
+                <button
+                  type="button"
+                  className="icon-button"
+                  key={label}
+                  aria-label={label}
+                  onClick={action}
+                >
+                  {symbol}
+                </button>
+              ))}
+            </div>
             <div className="graph-legend">
-              <span>
-                <span className="legend-point" aria-hidden="true" />
-                <span>Product</span>
-              </span>
-              <span>
-                <span className="legend-line" aria-hidden="true" />
-                <span>Recommended relationship</span>
-              </span>
+              <span>Color groups show actual connectivity</span>
+              <span>{Math.round(zoom * 100)}%</span>
             </div>
           </fieldset>
           <div className="graph-pan">
@@ -262,15 +266,13 @@ export default function Graph({ pairs }) {
               ["up", 0, 40, "↑"],
               ["down", 0, -40, "↓"],
               ["right", -40, 0, "→"],
-            ].map(([direction, x, y, symbol]) => (
+            ].map(([dir, x, y, symbol]) => (
               <button
                 type="button"
                 className="icon-button"
-                key={direction}
-                aria-label={`Pan ${direction}`}
-                onClick={() =>
-                  setPan((current) => ({ x: current.x + x, y: current.y + y }))
-                }
+                key={dir}
+                aria-label={`Pan ${dir}`}
+                onClick={() => setPan((p) => ({ x: p.x + x, y: p.y + y }))}
               >
                 {symbol}
               </button>
@@ -278,27 +280,26 @@ export default function Graph({ pairs }) {
           </div>
         </div>
         <aside className="graph-selection">
-          <label>
-            <span>Inspect relationship</span>
-            <select
-              value={selected?.rank ?? ""}
-              onChange={(e) =>
-                setSelected(
-                  pairs.find((p) => p.rank === Number(e.target.value)) || null,
-                )
-              }
-            >
-              <option value="">Choose a connection</option>
-              {pairs.map((pair) => (
-                <option key={pair.rank} value={pair.rank}>
-                  #{pair.rank} {pair.name_a} + {pair.name_b}
-                </option>
-              ))}
-            </select>
-          </label>
+          <h2>Relationship Details</h2>
+          <SearchSelect
+            label="Inspect relationship"
+            value={String(selected?.rank || "")}
+            options={pairs.map((p) => ({
+              value: String(p.rank),
+              label: `#${p.rank} ${p.name_a} ↔ ${p.name_b}`,
+            }))}
+            onChange={(v) =>
+              setSelected(pairs.find((p) => String(p.rank) === v) || null)
+            }
+          />
           <PairDetails pair={selected} />
         </aside>
       </div>
+      <p className="conceptual-note">
+        Undirected conceptual adjacency, not a physical floor plan. Use
+        pagination to access all matching relationships. Missing reverse
+        confidence is unavailable; it is not zero.
+      </p>
     </>
   );
 }

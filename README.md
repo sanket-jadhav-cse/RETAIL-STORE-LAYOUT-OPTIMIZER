@@ -1,142 +1,127 @@
-# Retail Store Layout Optimizer (FP-Growth)
+# RetailAtlas
 
-Account-based retail analytics: inspect transaction quality, mine product associations, explore conceptual product adjacency, and export evidence reports. React/JavaScript/Vite/Tailwind, FastAPI, SQLAlchemy/Alembic, Supabase Auth/PostgreSQL, and mlxtend FP-Growth. Recommendations support merchandising review; the graph is not a measured physical floor plan.
+Retail Store Layout Optimizer: invoice-level FP-Growth analysis with explainable product-adjacency recommendations. React/JavaScript and FastAPI, backed by Supabase PostgreSQL and Authentication.
 
-## Run locally
+## Features
 
-Requires Python 3.12, Node 22.12+, PostgreSQL and Linux/WSL. This workspace already has its real dataset and database migrations; do not reset or reimport them unnecessarily.
+- Nine focused workspace pages with a responsive GitHub Dark shell and light theme.
+- Private CSV/XLSX uploads, bounded previews, explicit column mapping and dataset quality/provenance.
+- Validated mining parameters, duplicate-safe submissions, persisted execution states and searchable history.
+- Directional association rules, an interactive undirected relationship map and complete-run CSV exports.
+- Account ownership checks, verified JWTs, profile/security preferences and protected shared UCI data.
+
+Recommendations support merchandising review; they do not prove increased sales or an optimal physical floor plan.
+
+## Application Screenshots
+
+Actual Chromium captures of the implemented UI. Gallery uses verified public UCI aggregate fixtures and a sanitized demonstration profile. [Workflow evidence and capture details](docs/improvement-report.md#j-screenshot-gallery) distinguish real API tests from controlled UI states.
+
+### Overview
+![Overview with five metrics, dataset quality, actual top pairs and recent runs](docs/screenshots/overview.png)
+
+### Datasets
+![Dataset catalog, provenance and preprocessing quality](docs/screenshots/datasets.png)
+
+### Dataset Upload
+![Dedicated CSV/XLSX upload page](docs/screenshots/dataset-upload.png)
+
+### Mining Configuration
+![FP-Growth thresholds and dataset selection](docs/screenshots/mining-configuration.png)
+
+### Mining Execution
+![Persisted execution summary and searchable run history](docs/screenshots/mining-execution.png)
+
+### Association Rules
+![Directional rules with server-side filtering and pagination](docs/screenshots/association-rules.png)
+
+### Product Relationship Map
+![Interactive connected product groups and relationship evidence](docs/screenshots/product-relationship-map.png)
+
+### Reports
+![Ranked product-pair evidence and complete-run CSV export](docs/screenshots/reports.png)
+
+### Account
+![Profile, account security and appearance preferences](docs/screenshots/account.png)
+
+## Stack and architecture
+
+React 19, JavaScript, Vite, Tailwind, Radix UI, TanStack Query and modular D3 force layout; FastAPI, Pydantic, SQLAlchemy, Alembic, Supabase PostgreSQL/Auth, pandas, NumPy and mlxtend.
+
+The API enforces ownership. A single scheduler and bounded child process execute FP-Growth; PostgreSQL persists results. Private source files and basket artifacts require persistent `DATA_DIR` storage. [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Verification report](docs/improvement-report.md).
+
+## Local setup
+
+Tested with Python 3.12, Node 26 and PostgreSQL 16. Use Node 22.12+.
+
+For a fresh checkout:
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 .venv/bin/pip install -r backend/requirements.lock
 .venv/bin/pip install --no-deps -e backend
 npm --prefix frontend ci
-# NEW installation only: copy .env.example to ROOT .env and fill it privately.
-.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
 
-In another terminal, run `npm --prefix frontend run dev` and open **http://localhost:5173**. Sign up, verify your email, then sign in. Use Forgot password for recovery; there is no shared application password.
+Configure the **root** `.env` using [.env.example](.env.example). Existing installations must retain their current environment, database, roles and dataset artifacts. Never copy the example over an existing configured file.
 
-**One local settings file: root `.env`.** Set `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `API_BASE_URL` and `CORS_ALLOWED_ORIGINS`; see the [placeholder example](.env.example). The browser receives only public configuration. Keep owner migration credentials local. After editing settings, restart the backend and frontend. Old backend/frontend env files are no longer used. New database/role/import setup and Supabase email redirect configuration are in the [deployment runbook](docs/deployment.md).
+Required: restricted `DATABASE_URL`, `SUPABASE_URL`, a public `SUPABASE_PUBLISHABLE_KEY`, `API_BASE_URL` and exact `CORS_ALLOWED_ORIGINS`. Keep `MIGRATION_DATABASE_URL` on the trusted migration machine only. Browser builds expose only the three public configuration values. Configure Supabase email verification/reset redirects for the actual frontend origin.
 
-The verified [UCI Online Retail Dataset](https://archive.ics.uci.edu/dataset/352/online+retail) spans 2010-12-01–2011-12-09: 541,909 source rows, 526,054 cleaned rows, 20,728 baskets and 3,829 products. Support 0.02, confidence 0.50, lift 1.0 and size 3 reproduce **358 itemsets / 52 rules / 38 recommendations**. Counts shown in the app come from persisted metadata/results. [Provenance](data/README.md).
-
-## Screens and features
-
-Screenshots use actual exported UCI aggregates with an isolated test identity, so account details and credentials remain private. Open an image for full-size detail. Live Supabase verification and limitations are recorded separately in the [improvement report](docs/improvement-report.md).
-
-<details>
-<summary>Overview — dataset availability, actual metrics and recent mining history</summary>
-
-Select a dataset, inspect its quality and open a previous analysis. Run controls appear on the analysis pages where needed.
-
-![Overview with actual UCI metrics](docs/images/after/overview.png)
-
-</details>
-
-<details>
-<summary>Datasets — searchable catalog, dates, source and preprocessing evidence</summary>
-
-Dataset names and counts come from PostgreSQL; unrelated imports retain their own provenance.
-
-![Dataset catalog and preprocessing](docs/images/after/datasets.png)
-
-</details>
-
-<details>
-<summary>Mining — named runs, validated thresholds and advanced settings</summary>
-
-Use every eligible basket, follow actual execution status and prevent duplicate submissions.
-
-![Mining configuration](docs/images/after/mining.png)
-
-</details>
-
-<details>
-<summary>Association Rules — product search, sorting, metric filters and pagination</summary>
-
-Compare directional confidence alongside support and lift. Tables support page scrolling, horizontal scrolling and keyboard access.
-
-![Searchable association rules](docs/images/after/association-rules.png)
-
-</details>
-
-<details>
-<summary>Product Layout — conceptual adjacency, zoom, pan and selected relationship details</summary>
-
-Search and filter relationships, inspect product names and metric explanations, then reset the graph view.
-
-![Product adjacency graph](docs/images/after/product-layout.png)
-![Selected graph relationship](docs/images/after/graph-detail.png)
-
-</details>
-
-<details>
-<summary>Reports — configuration, recommendation evidence and complete CSV export</summary>
-
-Review the selected dataset/run and search paginated recommendations. CSV exports contain all authorized recommendations.
-
-![Recommendation evidence report](docs/images/after/reports.png)
-
-</details>
-
-<details>
-<summary>Accounts — sign-in, signup, email verification and password recovery</summary>
-
-Supabase manages credentials and sessions. Expired links have clear guidance and a resend action.
-
-![Sign in](docs/images/after/sign-in.png)
-![Create account](docs/images/after/sign-up.png)
-![Email verification](docs/images/after/email-verification.png)
-![Resend verification](docs/images/after/resend-verification.png)
-![Forgot password](docs/images/after/forgot-password.png)
-![Reset password](docs/images/after/reset-password.png)
-
-</details>
-
-<details>
-<summary>Account menu and profile — real identity, preferences and sign-out</summary>
-
-View verification status, update your display name and request a password reset. Private results clear when accounts change.
-
-![Account menu](docs/images/after/account-menu.png)
-![Account profile](docs/images/after/account-profile.png)
-
-</details>
-
-<details>
-<summary>Previous runs — searchable, scrollable history without pasting UUIDs</summary>
-
-Filter authorized history by name, dataset, status or date; select using mouse or keyboard. Escape/outside interaction dismisses the menu.
-
-![Previous run selector](docs/images/after/run-selector.png)
-
-</details>
-
-<details>
-<summary>Responsive navigation and themes — compact sidebar and mobile reports</summary>
-
-The sidebar remembers its browser preference. Mobile navigation uses an accessible drawer. GitHub Dark is the default; an optional light theme remains available.
-
-![Collapsed sidebar](docs/images/after/sidebar-collapsed.png)
-![Mobile dashboard](docs/images/after/mobile-dashboard.png)
-![Mobile report](docs/images/after/mobile-report.png)
-![Optional light theme](docs/images/after/light-theme.png)
-
-</details>
-
-## Verification
+Apply additive migrations to the existing database:
 
 ```bash
 cd backend
-../.venv/bin/pytest -q  # Use a DISPOSABLE PostgreSQL database for both DB URL variables.
-cd ../frontend
-npm test
-npm run build
-npm audit --audit-level=moderate
-npx playwright install chromium
+../.venv/bin/alembic upgrade head
+cd ..
 ```
 
-Live browser checks require both servers, a verified authorized test account supplied through `E2E_EMAIL` / `E2E_PASSWORD`, the full UCI dataset and an existing completed baseline run: `cd frontend && npx playwright test`. The workflow creates one private run and respects the six-per-hour limit. Never run destructive tests on application data. For deterministic offline browser checks, first run `.venv/bin/python backend/scripts/browser_fixture.py`, then `cd frontend && npx playwright test --config playwright.platform.config.js`.
+Do not reset the database or rerun role/dataset provisioning for an existing installation. New-install dataset setup is described in [deployment.md](docs/deployment.md).
 
-[Current evidence and remaining owner actions](docs/improvement-report.md) · [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Final report](docs/final-report.md). No public deployment or production readiness certification is claimed.
+Run in separate terminals:
+
+```bash
+cd backend
+../.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
+```
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open `http://localhost:5173`. Vite proxies the default local API through the same origin, including Windows/WSL development. Production uses the configured API origin. Only one backend scheduler instance is supported.
+
+## Tests and build
+
+Backend integration tests require a disposable PostgreSQL database and a role allowed to create isolated test schemas/roles. Never point them at the application database.
+
+```bash
+export RETAIL_TEST_DATABASE_URL='postgresql+psycopg://YOUR_LOCAL_ROLE@127.0.0.1:5432/YOUR_TEST_DB'
+cd backend
+DATABASE_URL="$RETAIL_TEST_DATABASE_URL" MIGRATION_DATABASE_URL="$RETAIL_TEST_DATABASE_URL" ../.venv/bin/pytest -q
+cd ..
+npm --prefix frontend test
+npm --prefix frontend run build
+npm --prefix frontend audit --audit-level=moderate
+```
+
+Browser tests use the included sanitized aggregate fixture, not personal credentials:
+
+```bash
+cd frontend
+npx playwright install chromium
+npx playwright test --config playwright.platform.config.js
+RETAIL_E2E_ADMIN_URL="$RETAIL_TEST_DATABASE_URL" npx playwright test --config playwright.upload.config.js
+```
+
+The upload suite creates/removes only its own uniquely named **loopback** database and tests real API/worker persistence with controlled authentication. Linux Chromium may require system libraries; see the verification report for this environment's exact commands.
+
+## Data and research
+
+[UCI Online Retail](https://archive.ics.uci.edu/dataset/352/online+retail), Chen (2015), [DOI](https://doi.org/10.24432/C5BW33), CC BY 4.0. Verified source: 541,909 rows, 526,054 cleaned rows, 20,728 eligible baskets and 3,829 products. These are database verification results, not frontend constants.
+
+FP-Growth: Han, Pei and Yin, *Mining Frequent Patterns without Candidate Generation*, SIGMOD 2000, [DOI](https://doi.org/10.1145/342009.335372).
+
+## Limits
+
+Uploads: CSV/XLSX, default 50 MiB, 600,000 rows, 40 columns, 120 MiB expanded workbook, 100,000 baskets and 10,000 products. One worksheet; formulas/macros are unsupported. Preview is bounded; complete validation happens during processing. Mining admits one active job globally and defaults to six submissions/account/hour.
+
+Dataset catalog is bounded to 100 entries; result tables show ten rows per page. Deployment needs durable private artifact storage. Hosted email delivery, a second real Supabase account, target-host capacity and public deployment remain unverified. No public deployment is claimed. Full limitations and measured performance tradeoffs are in the [improvement report](docs/improvement-report.md).

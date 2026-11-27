@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from mlxtend.preprocessing import TransactionEncoder
 
-REQUIRED = {"invoiceno", "stockcode", "quantity", "description"}
+REQUIRED = {"invoiceno", "stockcode", "quantity"}
 
 
 def identifier(value):
@@ -27,8 +27,10 @@ def preprocess(frame: pd.DataFrame):
     frame.columns = [re.sub(r"[\s_]", "", str(c)).lower() for c in frame.columns]
     if frame.columns.duplicated().any() or not REQUIRED.issubset(frame.columns):
         raise ValueError(
-            "Required unique columns: InvoiceNo, StockCode, Description, Quantity"
+            "Required unique columns: InvoiceNo, StockCode, Quantity"
         )
+    if "description" not in frame:
+        frame["description"] = ""
     summary = {"original_records": len(frame), "excluded": {}, "metadata_version": 1}
     if "invoicedate" in frame:
         dates = pd.to_datetime(frame["invoicedate"], errors="coerce", format="mixed")

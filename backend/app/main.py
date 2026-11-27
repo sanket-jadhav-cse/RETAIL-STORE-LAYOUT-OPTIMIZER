@@ -1,22 +1,30 @@
+import asyncio
 import csv
+import hashlib
 import io
+import json
+import os
+import tempfile
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
 from app.auth import Identity, current_user
 from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
-from app.schemas import DatasetOut, RunHistory, RunInput, RunName, RunOut
+from app.schemas import DatasetOut, DatasetUpdate, RunHistory, RunInput, RunName, RunOut
+from app.uploads import UPLOAD_SLOT, column_mapping, parse_isolated, storage_identity
 from app.worker import LOCK_ID, Runner
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import AwareDatetime
 from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import defer
+from starlette.concurrency import run_in_threadpool
 
 runner = Runner()
 
@@ -34,7 +42,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins.split(","),
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
 )
 
 
@@ -156,16 +164,258 @@ def summary(id: UUID, session: DB):
     return get(session, Dataset, id)
 
 
+@app.get("/api/v1/upload-config")
+def upload_config(user: Annotated[Identity, Depends(current_user)]):
+    return {
+        "formats": ["csv", "xlsx"],
+        "max_bytes": settings.upload_max_bytes,
+        "max_rows": settings.upload_max_rows,
+        "max_columns": 40,
+    }
+
+
+async def receive_upload(request, target):
+    size = 0
+    digest = hashlib.sha256()
+    with target.open("wb") as stream:
+        os.chmod(target, 0o600)
+        try:
+            async with asyncio.timeout(settings.upload_timeout_seconds):
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > settings.upload_max_bytes:
+                        raise HTTPException(413, "File exceeds the upload size limit")
+                    stream.write(chunk)
+                    digest.update(chunk)
+        except TimeoutError:
+            raise HTTPException(
+                408, "Upload timed out; retry with a stable connection"
+            ) from None
+    if not size:
+        raise HTTPException(422, "Select a non-empty file")
+    return digest.hexdigest()
+
+
+@app.post("/api/v1/datasets/preview")
+async def preview_upload(
+    request: Request,
+    user: Annotated[Identity, Depends(current_user)],
+    format: Annotated[str, Query(pattern="^(csv|xlsx)$")],
+):
+    if not UPLOAD_SLOT.acquire(blocking=False):
+        raise HTTPException(429, "Another file is being processed; retry shortly")
+    try:
+        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix=".upload-", dir=settings.data_dir
+        ) as directory:
+            source, output = (
+                Path(directory) / f"source.{format}",
+                Path(directory) / "result.json",
+            )
+            await receive_upload(request, source)
+            return await run_in_threadpool(
+                parse_isolated, source, format, {}, output, True
+            )
+    finally:
+        UPLOAD_SLOT.release()
+
+
+@app.post("/api/v1/datasets", response_model=DatasetOut)
+async def upload_dataset(
+    request: Request,
+    session: DB,
+    format: Annotated[str, Query(pattern="^(csv|xlsx)$")],
+    name: Annotated[str, Query(min_length=1, max_length=200)],
+    mapping: Annotated[str, Query(max_length=4000)],
+    description: Annotated[str, Query(max_length=1000)] = "",
+):
+    try:
+        values = json.loads(mapping)
+        clean_name = DatasetUpdate(name=name).name
+    except (ValueError, TypeError):
+        raise HTTPException(422, "Check the dataset name and column mapping") from None
+    if not UPLOAD_SLOT.acquire(blocking=False):
+        raise HTTPException(429, "Another file is being processed; retry shortly")
+    try:
+        settings.data_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(
+            prefix=".upload-", dir=settings.data_dir
+        ) as directory:
+            source, output = (
+                Path(directory) / f"source.{format}",
+                Path(directory) / "result.json",
+            )
+            source_hash = await receive_upload(request, source)
+            return await run_in_threadpool(
+                _process_upload,
+                session,
+                source,
+                output,
+                format,
+                clean_name,
+                description,
+                values,
+                source_hash,
+            )
+    finally:
+        UPLOAD_SLOT.release()
+
+
+def _process_upload(
+    session, source, output, format, clean_name, description, values, source_hash
+):
+    # All blocking database/file/parser operations stay off the ASGI event loop.
+    published = []
+    try:
+        # Validate before deriving identity; equivalent mappings have the same key.
+        preview = parse_isolated(source, format, {}, output, True)
+        try:
+            values = column_mapping(preview["columns"], values)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from None
+        checksum = storage_identity(session.info["user_id"], source_hash, values)
+        session.execute(
+            text("SELECT pg_advisory_xact_lock(:key)"),
+            {"key": int(checksum[:15], 16)},
+        )
+        existing = session.scalar(
+            select(Dataset).where(
+                Dataset.checksum == checksum,
+                Dataset.owner_id == session.info["user_id"],
+            )
+        )
+        if existing:
+            return DatasetOut.model_validate(existing)
+        # Do not hold a DB transaction/connection during CPU-bound parsing.
+        session.rollback()
+        parsed = parse_isolated(source, format, values, output)
+        stats = parsed["summary"]
+        stats["upload"] = {
+            "source_sha256": source_hash,
+            "format": format,
+            "mapping": values,
+        }
+        sources = settings.data_dir / "sources"
+        sources.mkdir(exist_ok=True, mode=0o700)
+        basket_target = settings.data_dir / f"{checksum}.json"
+        source_target = sources / f"{checksum}.{format}"
+        for original, target in [
+            (output.with_suffix(".baskets"), basket_target),
+            (source, source_target),
+        ]:
+            os.chmod(original, 0o600)
+            os.replace(original, target)
+            published.append(target)
+        dataset = Dataset(
+            owner_id=session.info["user_id"],
+            is_shared=False,
+            name=clean_name,
+            description=description.strip() or None,
+            source="Private uploaded retail transactions",
+            version="sha256:" + source_hash[:12],
+            checksum=checksum,
+            basket_count=stats["basket_count"],
+            summary=stats,
+            transaction_start=date.fromisoformat(stats["transaction_start"])
+            if stats.get("transaction_start")
+            else None,
+            transaction_end=date.fromisoformat(stats["transaction_end"])
+            if stats.get("transaction_end")
+            else None,
+            processing_status="Ready",
+        )
+        session.add(dataset)
+        session.flush()
+        session.add_all(
+            [
+                Product(
+                    dataset_id=dataset.dataset_id,
+                    product_code=code,
+                    description=label,
+                )
+                for code, label in parsed["products"].items()
+            ]
+        )
+        session.commit()
+        published.clear()
+        return DatasetOut.model_validate(dataset)
+    finally:
+        for target in published:
+            target.unlink(missing_ok=True)
+
+
+@app.patch("/api/v1/datasets/{id}", response_model=DatasetOut)
+def update_dataset(id: UUID, body: DatasetUpdate, session: DB):
+    dataset = get(session, Dataset, id)
+    if dataset.is_shared or str(dataset.owner_id) != session.info["user_id"]:
+        raise HTTPException(403, "Shared datasets are protected from modification")
+    if body.processing_status and session.scalar(
+        select(MiningRun.run_id)
+        .where(MiningRun.dataset_id == id, MiningRun.status.in_(["Queued", "Running"]))
+        .limit(1)
+    ):
+        raise HTTPException(409, "Wait for the active mining run before archiving")
+    if body.name is not None:
+        dataset.name = body.name
+    if body.processing_status:
+        dataset.processing_status = body.processing_status
+    session.commit()
+    return dataset
+
+
+@app.get("/api/v1/datasets/{id}/source")
+def download_source(id: UUID, session: DB):
+    dataset = get(session, Dataset, id)
+    if dataset.is_shared or str(dataset.owner_id) != session.info["user_id"]:
+        raise HTTPException(
+            403, "Only your retained private source files can be downloaded"
+        )
+    extension = dataset.summary.get("upload", {}).get("format")
+    if extension not in ("csv", "xlsx"):
+        raise HTTPException(404, "Source file was not retained")
+    path = settings.data_dir / "sources" / f"{dataset.checksum}.{extension}"
+    if not path.is_file():
+        raise HTTPException(404, "Source file is unavailable on this host")
+    return FileResponse(path, filename=f"retail-dataset-{id}.{extension}")
+
+
 @app.post(
     "/api/v1/runs",
     response_model=RunOut,
     status_code=202,
     responses={429: {"description": "Hourly mining limit reached"}},
 )
-def create_run(body: RunInput, session: DB):
+def create_run(
+    body: RunInput,
+    session: DB,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
+):
+    # Serialize both the duplicate check and admission before worker/limit checks.
+    session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": LOCK_ID + 1})
+    if idempotency_key:
+        prior = session.scalar(
+            select(MiningRun)
+            .options(defer(MiningRun.itemsets))
+            .where(
+                MiningRun.owner_id == session.info["user_id"],
+                MiningRun.submission_key == idempotency_key,
+            )
+        )
+        if prior:
+            if any(
+                getattr(prior, k) != v
+                for k, v in body.model_dump(exclude={"name"}).items()
+            ) or (body.name is not None and body.name != prior.name):
+                raise HTTPException(
+                    409, "This submission key belongs to different parameters"
+                )
+            return prior
     if not runner.ready:
         raise HTTPException(503, "Mining worker unavailable")
     dataset = get(session, Dataset, body.dataset_id)
+    if dataset.processing_status != "Ready":
+        raise HTTPException(409, "Select a ready, unarchived dataset")
     if not (settings.data_dir / f"{dataset.checksum}.json").is_file():
         raise HTTPException(
             409, "Dataset basket artifact is unavailable; import dataset on this host"
@@ -191,13 +441,11 @@ def create_run(body: RunInput, session: DB):
         )
     values = body.model_dump()
     values["name"] = (
-        body.name
-        or (
-            f"Market Basket Analysis · {dataset.name[:40]} · "
-            f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC · s={body.min_support:g} c={body.min_confidence:g}"
-        )[:120]
+        body.name or (f"Market Basket Analysis · {dataset.name[:60]}")[:120]
     )
-    run = MiningRun(**values, owner_id=session.info["user_id"])
+    run = MiningRun(
+        **values, owner_id=session.info["user_id"], submission_key=idempotency_key
+    )
     session.add(run)
     session.commit()
     return run

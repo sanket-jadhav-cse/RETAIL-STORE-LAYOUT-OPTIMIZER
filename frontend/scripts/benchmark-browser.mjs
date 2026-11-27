@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const fixture = JSON.parse(
   fs.readFileSync(
-    path.join(root, "test-results/improvements/browser-fixture.json"),
+    path.join(root, "frontend/e2e/fixtures/uci-aggregate.json"),
   ),
 );
 const [beforeDir, afterDir, output] = process.argv.slice(2);
@@ -83,7 +83,7 @@ async function sample(browser, url) {
     await context.addInitScript(() => {
       const observer = new MutationObserver(() => {
         if (
-          [...document.querySelectorAll(".metric > strong")].some(
+          [...document.querySelectorAll(".metric strong")].some(
             (element) => element.textContent.trim() === "358",
           )
         ) {
@@ -108,7 +108,9 @@ async function sample(browser, url) {
         ),
       }),
     );
+    let apiRequests = 0;
     await page.route("**/api/v1/**", (route) => {
+      apiRequests++;
       const pathname = new URL(route.request().url()).pathname;
       let data;
       if (pathname.endsWith("/datasets")) data = [fixture.dataset];
@@ -145,6 +147,7 @@ async function sample(browser, url) {
     await expect(page.getByText("358", { exact: true })).toBeVisible();
     return {
       metrics_visible_ms: performance.now() - started,
+      api_request_count: apiRequests,
       ...(await page.evaluate(() => {
         const nav = performance.getEntriesByType("navigation")[0];
         return {
@@ -171,7 +174,7 @@ const browser = await chromium.launch();
 try {
   const results = {
     context:
-      "Same Chromium/1440x1000, local uncompressed production assets, fresh context per sample; actual aggregate fixture, mocked Auth/API, no database/network/mining latency. Warm-up excluded; seven alternating samples. Original build has no account layer; this records added UI/Auth cost, not equivalent production-network latency.",
+      "Same Chromium/1440x1000, local uncompressed production assets, fresh context per sample; actual aggregate fixture, mocked Auth/API, no database/network/mining latency. Warm-up excluded; seven alternating samples. Frozen pre-change build and current build both include account authentication. API timings here exclude real PostgreSQL and Supabase network latency.",
     before: [],
     after: [],
   };
