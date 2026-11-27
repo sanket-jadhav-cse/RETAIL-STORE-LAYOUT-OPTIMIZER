@@ -49,7 +49,7 @@ export default function Sidebar({
             aria-expanded={!collapsed}
             onClick={onCollapse}
           >
-            <Icon name="menu" />
+            <Icon name="chevron" />
           </button>
         )}
       </div>
