@@ -9,9 +9,10 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { api } from "./api";
 import { Notice } from "./ui";
+import { config } from "./config";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const url = config.supabaseUrl;
+const key = config.supabasePublishableKey;
 function callbackErrorMessage() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const query = new URLSearchParams(location.search);

@@ -1,10 +1,10 @@
 """Owner-only setup: create a scoped runtime login and save a local runtime URL."""
 
-import os
 import secrets
 from pathlib import Path
 
 from app.config import engine
+from dotenv import set_key
 from sqlalchemy import text
 
 password = secrets.token_urlsafe(40)
@@ -35,11 +35,13 @@ with engine.begin() as conn:
             )
         )
     conn.execute(text("GRANT EXECUTE ON FUNCTION retail.mining_busy() TO retail_app"))
-url = engine.url.set(username="retail_app.gycudrddfpchdfmiqvny", password=password)
-path = Path(__file__).resolve().parents[1] / ".env.runtime"
-fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-with os.fdopen(fd, "w") as stream:
-    stream.write("DATABASE_URL=" + url.render_as_string(hide_password=False) + "\n")
+# Preserve the Session Pooler's project suffix without embedding a project ID.
+username = engine.url.username or ""
+suffix = "." + username.split(".", 1)[1] if "." in username else ""
+url = engine.url.set(username="retail_app" + suffix, password=password)
+path = Path(__file__).resolve().parents[2] / ".env"
+set_key(path, "RUNTIME_DATABASE_URL", url.render_as_string(hide_password=False))
+path.chmod(0o600)
 print(
-    "Created retail_app role; runtime connection stored in ignored backend/.env.runtime"
+    "Created runtime role; staged its connection in the ignored root .env. Run activate_runtime.py next."
 )
