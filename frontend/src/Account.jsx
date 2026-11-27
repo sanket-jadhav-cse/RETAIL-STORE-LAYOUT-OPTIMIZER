@@ -109,7 +109,7 @@ export default function Account({ collapsed, setCollapsed }) {
       )}
       {feedback && <Notice kind="success">{feedback}</Notice>}
       {!profile ? (
-        <p role="status">Loading account…</p>
+        <output>Loading account…</output>
       ) : (
         <>
           <dl className="source-metadata">
@@ -136,7 +136,7 @@ export default function Account({ collapsed, setCollapsed }) {
             className="auth-form"
             onSubmit={(e) => {
               e.preventDefault();
-              action(
+              void action(
                 () =>
                   supabase.auth.updateUser({
                     data: { display_name: name.trim() },
@@ -146,7 +146,7 @@ export default function Account({ collapsed, setCollapsed }) {
             }}
           >
             <label>
-              Display name
+              <span>Display name</span>
               <input
                 value={name}
                 maxLength={80}
@@ -154,7 +154,11 @@ export default function Account({ collapsed, setCollapsed }) {
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            <button className="button primary" disabled={busy || !name.trim()}>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={busy || !name.trim()}
+            >
               Save profile
             </button>
           </form>
@@ -165,7 +169,7 @@ export default function Account({ collapsed, setCollapsed }) {
                 checked={collapsed}
                 onChange={(e) => setCollapsed(e.target.checked)}
               />
-              Collapse sidebar
+              <span>Collapse sidebar</span>
             </label>
           )}
           <div className="button-group">

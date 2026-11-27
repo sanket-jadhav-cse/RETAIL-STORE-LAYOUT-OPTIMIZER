@@ -102,13 +102,13 @@ export default function RunSelector({
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      select(rows[active]);
+      void select(rows[active]);
     }
   }
   const content = (
     <>
       <label>
-        Search previous runs
+        <span>Search previous runs</span>
         <input
           type="search"
           role="combobox"
@@ -129,7 +129,7 @@ export default function RunSelector({
       </label>
       <div className="history-filters">
         <label>
-          Status
+          <span>Status</span>
           <select
             value={status}
             onChange={(e) => filter(setStatus, e.target.value)}
@@ -141,7 +141,7 @@ export default function RunSelector({
           </select>
         </label>
         <label>
-          Filter runs by dataset
+          <span>Filter runs by dataset</span>
           <select
             value={dataset}
             onChange={(e) => filter(setDataset, e.target.value)}
@@ -155,7 +155,7 @@ export default function RunSelector({
           </select>
         </label>
         <label>
-          Created on
+          <span>Created on</span>
           <input
             type="date"
             value={date}
@@ -177,15 +177,11 @@ export default function RunSelector({
       )}
       <p className="eyebrow">Recent runs</p>
       {loading && (
-        <div
-          role="status"
-          aria-label="Loading previous runs"
-          className="skeleton-list"
-        >
+        <output aria-label="Loading previous runs" className="skeleton-list">
           {[1, 2, 3].map((n) => (
-            <div className="skeleton" key={n} />
+            <span className="skeleton" key={n} />
           ))}
-        </div>
+        </output>
       )}
       {!loading && !error && result?.items?.length === 0 && (
         <p className="muted">
@@ -238,7 +234,7 @@ export default function RunSelector({
       {!loading && !error && result?.total > 10 && (
         <Pager page={page} setPage={setPage} total={result.total} size={10} />
       )}
-      {selecting && <p role="status">Loading selected analysis…</p>}
+      {selecting && <output>Loading selected analysis…</output>}
     </>
   );
   return inline ? (

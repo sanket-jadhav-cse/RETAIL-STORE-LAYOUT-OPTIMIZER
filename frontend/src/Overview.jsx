@@ -42,6 +42,13 @@ export function DatasetQuality({ dataset }) {
     </div>
   );
 }
+function miningAvailability(dataset, run) {
+  if (!dataset) return "Dataset Unavailable";
+  if (["Queued", "Running"].includes(run?.status)) return "Mining Running";
+  if (run?.status === "Failed") return "Mining Failed";
+  if (run?.status === "Completed") return "Mining Completed";
+  return "Mining Ready";
+}
 export default function Overview({
   dataset,
   datasets,
@@ -114,15 +121,7 @@ export default function Overview({
               : "Select a dataset to begin"}
           </p>
           <p className="mining-availability">
-            {!dataset
-              ? "Dataset Unavailable"
-              : run?.status === "Running" || run?.status === "Queued"
-                ? "Mining Running"
-                : run?.status === "Failed"
-                  ? "Mining Failed"
-                  : run?.status === "Completed"
-                    ? "Mining Completed"
-                    : "Mining Ready"}
+            {miningAvailability(dataset, run)}
           </p>
         </div>
         <div className="button-group">

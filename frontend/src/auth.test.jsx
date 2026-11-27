@@ -73,7 +73,9 @@ it("signup leads to email verification and forgot password gives neutral feedbac
   fireEvent.click(
     screen.getByRole("button", { name: "Create account", exact: true }),
   );
-  await screen.findByRole("heading", { name: "Verify your email" });
+  expect(
+    await screen.findByRole("heading", { name: "Verify your email" }),
+  ).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "Forgot password", exact: true }),
   );
@@ -83,7 +85,9 @@ it("signup leads to email verification and forgot password gives neutral feedbac
   fireEvent.click(
     screen.getByRole("button", { name: "Forgot password", exact: true }),
   );
-  await screen.findByText(/If an account can receive email/);
+  expect(
+    await screen.findByText(/If an account can receive email/),
+  ).toBeInTheDocument();
 });
 it("expired password reset gives a recoverable error", async () => {
   mocks.updateUser.mockResolvedValue({ error: { message: "Expired link" } });
