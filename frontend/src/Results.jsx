@@ -2,7 +2,7 @@ import { useState } from "react";
 import Icon from "./Icon";
 import Graph, { pct } from "./Graph";
 import { DatasetQuality } from "./Overview";
-import { EmptyResults, Pager, SectionHeading, Notice } from "./ui";
+import { EmptyResults, Pager, SectionHeading } from "./ui";
 
 const qualityLabels = {
   original_records: "Original records",
@@ -25,7 +25,7 @@ export function DatasetScreen({ dataset, datasets = [], onSelect }) {
         Choose a source for your analysis.
       </SectionHeading>
       <label>
-        Search datasets
+        <span>Search datasets</span>
         <input
           type="search"
           value={search}
@@ -260,7 +260,7 @@ export function MiningScreen({
         </SectionHeading>
         <form onSubmit={onSubmit}>
           <label className="run-name-field">
-            Run name (optional)
+            <span>Run name (optional)</span>
             <input
               value={params.name || ""}
               maxLength={120}
@@ -479,7 +479,7 @@ export function ResultsScreen({
           </label>
           {screen === 3 && (
             <label>
-              Minimum support
+              <span>Minimum support</span>
               <input
                 type="number"
                 min="0"
@@ -493,7 +493,7 @@ export function ResultsScreen({
             </label>
           )}
           <label>
-            Minimum confidence
+            <span>Minimum confidence</span>
             <input
               type="number"
               min="0"
@@ -515,9 +515,9 @@ export function ResultsScreen({
       }
       {!loading && rows?.length === 0 && <EmptyResults />}
       {screen === 3 && rows?.length > 0 && (
-        <div
+        <section
           className="table-scroll"
-          role="region"
+
           tabIndex="0"
           aria-label="Scrollable association rules"
         >
@@ -589,7 +589,7 @@ export function ResultsScreen({
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
       )}
       {screen === 4 && rows?.length > 0 && (
         <Graph
@@ -643,9 +643,9 @@ export function ResultsScreen({
             <Icon name="info" />
             <p>{result.review}</p>
           </div>
-          <div
+          <section
             className="table-scroll"
-            role="region"
+
             tabIndex="0"
             aria-label="Scrollable recommendation report"
           >
@@ -691,7 +691,7 @@ export function ResultsScreen({
                 ))}
               </tbody>
             </table>
-          </div>
+          </section>
         </>
       )}
       {result && <Pager page={page} setPage={setPage} total={total} />}

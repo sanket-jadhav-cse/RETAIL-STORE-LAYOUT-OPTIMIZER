@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from app.auth import current_user
+from app.auth import Identity, current_user
 from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
 from app.schemas import DatasetOut, RunHistory, RunInput, RunName, RunOut
@@ -160,6 +160,7 @@ def summary(id: UUID, session: DB):
     "/api/v1/runs",
     response_model=RunOut,
     status_code=202,
+    responses={429: {"description": "Hourly mining limit reached"}},
 )
 def create_run(body: RunInput, session: DB):
     if not runner.ready:
@@ -202,7 +203,11 @@ def create_run(body: RunInput, session: DB):
     return run
 
 
-@app.get("/api/v1/runs", response_model=RunHistory)
+@app.get(
+    "/api/v1/runs",
+    response_model=RunHistory,
+    responses={422: {"description": "Invalid search or creation date range"}},
+)
 def run_history(
     session: DB,
     page: PAGE = 1,
@@ -457,7 +462,7 @@ def report_csv(id: UUID, session: DB):
 
 
 @app.get("/api/v1/account")
-def account(user=Depends(current_user)):
+def account(user: Annotated[Identity, Depends(current_user)]):
     profile = user.profile
     return {
         "user_id": user.user_id,

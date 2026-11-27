@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createClient } from "@supabase/supabase-js";
 import { api } from "./api";
 import { Notice } from "./ui";
@@ -101,7 +108,7 @@ export function AuthProvider({ children }) {
           setError("Your session has expired. Sign in again.");
           await supabase.auth.signOut({ scope: "local" });
         }
-        return Promise.reject(failure);
+        throw failure;
       },
     );
     return () => {
@@ -110,18 +117,21 @@ export function AuthProvider({ children }) {
     };
   }, []);
   // Remount all private state on logout/account switch; no private run IDs in storage.
-  const value = {
-    user: session?.user,
-    signOut: () => supabase.auth.signOut(),
-    requestReset: (email) =>
-      supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${location.origin}/reset-password`,
-      }),
-  };
+  const value = useMemo(
+    () => ({
+      user: session?.user,
+      signOut: () => supabase.auth.signOut(),
+      requestReset: (email) =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${location.origin}/reset-password`,
+        }),
+    }),
+    [session?.user],
+  );
   if (!ready)
     return (
       <main className="auth-shell">
-        <p role="status">Restoring your session…</p>
+        <output>Restoring your session…</output>
       </main>
     );
   if (!session || recovery)
@@ -141,6 +151,44 @@ export function AuthProvider({ children }) {
       <div key={session.user.id}>{children}</div>
     </AuthContext.Provider>
   );
+}
+
+function formText(fields, name) {
+  const value = fields.get(name);
+  return typeof value === "string" ? value : "";
+}
+function sendAuthRequest(mode, fields) {
+  const email = formText(fields, "email").trim(),
+    password = formText(fields, "password");
+  const requests = {
+    signin: () => supabase.auth.signInWithPassword({ email, password }),
+    signup: () =>
+      supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: location.origin,
+          data: { display_name: formText(fields, "display_name").trim() },
+        },
+      }),
+    forgot: () =>
+      supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${location.origin}/reset-password`,
+      }),
+    reset: () => supabase.auth.updateUser({ password }),
+  };
+  return requests[mode]();
+}
+function authFailureMessage(mode, error_) {
+  if (mode === "signin")
+    return "Sign in failed. Check your credentials and email verification, then retry.";
+  if (mode === "reset")
+    return "This reset link may have expired. Request a new link and try again.";
+  if (mode === "forgot")
+    return "Unable to send instructions. Please retry shortly.";
+  if (error_.code === "weak_password")
+    return "Choose a stronger password with at least 8 characters.";
+  return "Unable to create an account. Check the fields or try signing in.";
 }
 
 export function AuthScreen({
@@ -169,33 +217,12 @@ export function AuthScreen({
   async function submit(event) {
     event.preventDefault();
     if (busy || !supabase) return;
-    const fields = new FormData(event.currentTarget),
-      email = String(fields.get("email") || "").trim(),
-      password = String(fields.get("password") || "");
+    const fields = new FormData(event.currentTarget);
     setBusy(true);
     setError("");
     setFeedback("");
     try {
-      let result;
-      if (mode === "signin")
-        result = await supabase.auth.signInWithPassword({ email, password });
-      if (mode === "signup")
-        result = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: location.origin,
-            data: {
-              display_name: String(fields.get("display_name") || "").trim(),
-            },
-          },
-        });
-      if (mode === "forgot")
-        result = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${location.origin}/reset-password`,
-        });
-      if (mode === "reset")
-        result = await supabase.auth.updateUser({ password });
+      const result = await sendAuthRequest(mode, fields);
       if (result?.error) throw result.error;
       if (mode === "signup") navigate("verify");
       if (mode === "forgot")
@@ -206,18 +233,8 @@ export function AuthScreen({
         setFeedback("Password updated.");
         onReset();
       }
-    } catch (failure) {
-      setError(
-        mode === "signin"
-          ? "Sign in failed. Check your credentials and email verification, then retry."
-          : mode === "reset"
-            ? "This reset link may have expired. Request a new link and try again."
-            : mode === "forgot"
-              ? "Unable to send instructions. Please retry shortly."
-              : failure.code === "weak_password"
-                ? "Choose a stronger password with at least 8 characters."
-                : "Unable to create an account. Check the fields or try signing in.",
-      );
+    } catch (error_) {
+      setError(authFailureMessage(mode, error_));
     } finally {
       setBusy(false);
     }
@@ -244,7 +261,7 @@ export function AuthScreen({
           <form onSubmit={submit} className="auth-form" key={mode}>
             {mode === "signup" && (
               <label>
-                Display name
+                <span>Display name</span>
                 <input
                   name="display_name"
                   autoComplete="name"
@@ -255,7 +272,7 @@ export function AuthScreen({
             )}
             {mode !== "reset" && (
               <label>
-                Email address
+                <span>Email address</span>
                 <input
                   name="email"
                   type="email"
@@ -291,7 +308,11 @@ export function AuthScreen({
                 </div>
               </label>
             )}
-            <button className="button primary" disabled={busy || !supabase}>
+            <button
+              type="submit"
+              className="button primary"
+              disabled={busy || !supabase}
+            >
               {busy ? "Please wait…" : titles[mode]}
             </button>
           </form>

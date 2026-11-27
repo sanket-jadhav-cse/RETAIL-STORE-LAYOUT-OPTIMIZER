@@ -29,10 +29,10 @@ with MaintenanceSession() as session:
     )
     ds = DatasetOut.model_validate(dataset).model_dump(mode="json")
     ds["latest_run_id"] = str(run.run_id)
-    output = dict(
-        dataset=ds,
-        run=RunOut.model_validate(run).model_dump(mode="json"),
-        rules=[
+    output = {
+        "dataset": ds,
+        "run": RunOut.model_validate(run).model_dump(mode="json"),
+        "rules": [
             rule_dict(row, labels)
             for row in session.scalars(
                 select(AssociationRule)
@@ -40,7 +40,7 @@ with MaintenanceSession() as session:
                 .order_by(AssociationRule.lift.desc())
             )
         ],
-        pairs=[
+        "pairs": [
             {
                 k: str(v) if isinstance(v, UUID) else v
                 for k, v in pair_dict(row, labels).items()
@@ -51,7 +51,7 @@ with MaintenanceSession() as session:
                 .order_by(Adjacency.rank)
             )
         ],
-    )
+    }
 path = (
     Path(__file__).resolve().parents[2]
     / "test-results/improvements/browser-fixture.json"
