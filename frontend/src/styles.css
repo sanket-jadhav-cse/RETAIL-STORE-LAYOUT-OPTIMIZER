@@ -79,6 +79,36 @@
   --error: #cf222e;
   --warning: #7d4e00;
   --purple: #8250df;
+  --color-bg-page: #f6f8fa;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #eaeef2;
+  --color-bg-hover: #eaeef2;
+  --color-text-primary: #1f2328;
+  --color-text-heading: #1f2328;
+  --color-text-secondary: #59636e;
+  --color-border: #d0d7de;
+  --color-control-border: #59636e;
+  --color-accent-solid: #1f7a32;
+  --color-accent-text: #0969da;
+  --color-accent-soft: #eaeef2;
+  --color-on-accent: #ffffff;
+  --color-focus: #0969da;
+  --color-nav-bg: #ffffff;
+  --color-nav-text: #59636e;
+  --color-nav-title: #1f2328;
+  --color-nav-muted: #59636e;
+  --color-nav-hover: #eaeef2;
+  --color-nav-selected: #eaeef2;
+  --color-nav-accent: #0969da;
+  --color-banner-bg: #ffffff;
+  --color-banner-text: #1f2328;
+  --color-banner-muted: #59636e;
+  --color-banner-art: #0969da;
+  --color-graph-bg: #f6f8fa;
+  --color-graph-grid: #d0d7de;
+  --color-graph-edge: #59636e;
+  --color-graph-edge-active: #8250df;
+  --color-graph-node: #0969da;
 }
 @layer base {
   html {
