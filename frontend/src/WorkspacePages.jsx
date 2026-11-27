@@ -60,6 +60,10 @@ function OverviewPage({
               : dataset.processing_status || "Ready"}
           </span>
         )}
+        <button type="button" className="button primary overview-new-run" onClick={() => onNavigate(3)}>
+          <Icon name="activity" />
+          New Mining Run
+        </button>
       </div>
       {!datasets.length && (
         <Notice title="No available datasets">
@@ -197,7 +201,12 @@ function DatasetsPage({ dataset, datasets, onDataset, onNavigate }) {
       {feedback && <Notice kind="success">{feedback}</Notice>}
       <div className="dataset-master-detail">
         <section className="panel dataset-master">
-          <SectionHeading title="Dataset catalog" />
+          <SectionHeading title="Dataset catalog" action={!dataset && (
+            <button type="button" className="button primary" onClick={() => onNavigate(2)}>
+              <Icon name="upload" />
+              Upload Dataset
+            </button>
+          )} />
           <label>
             <span className="sr-only">Search datasets</span>
             <input
@@ -266,17 +275,16 @@ function DatasetsPage({ dataset, datasets, onDataset, onNavigate }) {
           <section className="panel dataset-detail" key={dataset.dataset_id}>
             <SectionHeading
               title={dataset.name}
-              action={
-                <button
-                  type="button"
-                  className="button primary"
-                  disabled={dataset.processing_status !== "Ready"}
-                  onClick={() => onNavigate(3)}
-                >
+              action={<div className="button-group dataset-detail-actions">
+                <button type="button" className="button secondary" onClick={() => onNavigate(2)}>
+                  <Icon name="upload" />
+                  Upload Dataset
+                </button>
+                <button type="button" className="button primary" disabled={dataset.processing_status !== "Ready"} onClick={() => onNavigate(3)}>
                   <Icon name="activity" />
                   Start Mining
                 </button>
-              }
+              </div>}
             >
               {dataset.description || dataset.source}
             </SectionHeading>

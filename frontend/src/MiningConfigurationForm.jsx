@@ -114,14 +114,14 @@ export function MiningScreen({
               {busy ? "Starting analysis…" : "Run FP-Growth"}
             </button>
           </div>
+          <div className="compact-help-row threshold-guide">
+            <span>Threshold guide</span>
+            <HelpTip label="Threshold guide">
+              Begin with the default thresholds, then adjust based on the number and relevance of the relationships you find. Support measures pattern coverage, confidence measures directional frequency, and lift measures association strength. Lower support may create many more patterns and use additional memory. Confidence is directional. FP-Growth mines observed co-purchases.
+            </HelpTip>
+          </div>
         </form>
       </section>
-      <aside className="compact-help-row">
-        <span>Threshold guide</span>
-        <HelpTip label="Threshold guide">
-          Begin with the default thresholds, then adjust based on the number and relevance of the relationships you find. Support measures pattern coverage, confidence measures directional frequency, and lift measures association strength. Lower support may create many more patterns and use additional memory. Confidence is directional. FP-Growth mines observed co-purchases.
-        </HelpTip>
-      </aside>
     </div>
   );
 }

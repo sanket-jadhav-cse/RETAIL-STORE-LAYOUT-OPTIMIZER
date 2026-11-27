@@ -212,6 +212,7 @@ function AppShell() {
         collapsed={collapsed}
         open={menuOpen}
         onOpenChange={setMenuOpen}
+        onCollapse={() => setCollapsed(!collapsed)}
       />
       <div className="workspace">
         <header className="topbar">
@@ -232,15 +233,6 @@ function AppShell() {
               <Icon name={theme === "light" ? "moon" : "sun"} />
             </button>
             <UserMenu onAccount={() => navigate(8)} />
-            <button
-              type="button"
-              className="icon-button desktop-sidebar-toggle"
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-expanded={!collapsed}
-              onClick={() => setCollapsed(!collapsed)}
-            >
-              <Icon name="menu" />
-            </button>
           </div>
         </header>
         <main
@@ -251,7 +243,7 @@ function AppShell() {
             <h1 ref={heading} tabIndex="-1" className={title === name ? "sr-only" : undefined}>
               {title}
             </h1>
-            {action && (
+            {action && ![0, 1, 2].includes(screen) && (
               <button
                 key={screen}
                 type="button"

@@ -25,6 +25,7 @@ export default function Sidebar({
   collapsed,
   open,
   onOpenChange,
+  onCollapse,
 }) {
   const mobile = useMobileNavigation();
   const auth = useAuth();
@@ -40,6 +41,17 @@ export default function Sidebar({
             <small>Retail analytics</small>
           </div>
         </div>
+        {!mobile && (
+          <button
+            type="button"
+            className="icon-button sidebar-collapse-toggle"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            onClick={onCollapse}
+          >
+            <Icon name="menu" />
+          </button>
+        )}
       </div>
       <div className="sidebar-body" data-open="true">
         <p className="nav-label">Workspace</p>

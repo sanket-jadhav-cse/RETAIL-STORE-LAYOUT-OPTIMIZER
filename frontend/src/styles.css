@@ -3571,3 +3571,15 @@ th {
   .topbar-page .breadcrumb > span { display: inline; }
   .topbar-page .breadcrumb { gap: 5px; }
 }
+/* Keep actions with their related content. */
+.overview-dataset-control { flex-wrap: wrap; gap: 12px; }
+.overview-dataset-control .overview-new-run { margin-left: auto; white-space: nowrap; }
+.dataset-detail-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.upload-panel-actions { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.threshold-guide { margin-top: -4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.brand-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sidebar-collapse-toggle { flex: 0 0 auto; width: 30px; height: 30px; }
+.sidebar[data-collapsed="true"] .brand-row { flex-direction: column; gap: 8px; }
+@media (max-width: 767px) {
+  .overview-dataset-control .overview-new-run { margin-left: 0; }
+}
