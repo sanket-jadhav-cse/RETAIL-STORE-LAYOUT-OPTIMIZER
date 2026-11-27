@@ -570,3 +570,60 @@ def test_result_filters_and_csv_formula_safety(client, store):
     row = next(csv.DictReader(io.StringIO(client.get(root + "/report.csv").text)))
     assert row["name_a"].startswith("'  =")
     assert row["rationale"].startswith("'\n=")
+
+
+def test_catalog_query_budget_and_status_without_itemset_loading(client, store):
+    from sqlalchemy import event
+
+    statements = []
+
+    def capture(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    with store.begin() as session:
+        for i in range(10):
+            session.add(
+                Dataset(
+                    name=f"Query budget {i}",
+                    source="TEST",
+                    version="v1",
+                    checksum=uuid.uuid4().hex,
+                    basket_count=1,
+                    summary={},
+                    is_shared=True,
+                )
+            )
+        session.flush()
+        dataset = session.scalar(
+            select(Dataset).where(Dataset.name == "Query budget 0")
+        )
+        run = MiningRun(
+            dataset_id=dataset.dataset_id,
+            owner_id=uuid.UUID(int=1),
+            name="Payload Test",
+            min_support=0.02,
+            min_confidence=0.5,
+            min_lift=1,
+            status="Completed",
+            itemsets=[{"items": ["A"], "support": 0.2}] * 1000,
+        )
+        session.add(run)
+        session.flush()
+        run_id = str(run.run_id)
+    bind = store.kw["bind"]
+    event.listen(bind, "before_cursor_execute", capture)
+    try:
+        result = client.get("/api/v1/datasets")
+        assert result.status_code == 200
+        assert len(statements) <= 3, f"Catalog emitted {len(statements)} statements"
+        statements.clear()
+        response = client.get(f"/api/v1/runs/{run_id}")
+        assert response.status_code == 200
+        assert "itemsets" not in response.json()
+        assert not any(".itemsets" in sql for sql in statements)
+        assert (
+            client.get(f"/api/v1/runs/{run_id}/itemsets?page_size=5").json()["total"]
+            == 1000
+        )
+    finally:
+        event.remove(bind, "before_cursor_execute", capture)

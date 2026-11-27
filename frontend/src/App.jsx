@@ -38,23 +38,37 @@ const descriptions = [
   "A practical evidence trail for your merchandising review.",
   "Manage your profile and account security.",
 ];
+const pageSlugs = [
+  "overview",
+  "datasets",
+  "mining",
+  "rules",
+  "layout",
+  "reports",
+  "account",
+];
+const screenFromUrl = () =>
+  Math.max(0, pageSlugs.indexOf(location.hash.slice(1)));
 export default function App() {
-  const [screen, setScreen] = useState(0),
+  const [screen, setScreen] = useState(screenFromUrl),
     [datasets, setDatasets] = useState([]),
     [datasetId, setDatasetId] = useState(""),
     [run, setRun] = useState(null),
     [runId, setRunId] = useState(""),
-    [loading, setLoading] = useState(false),
+    [datasetLoading, setDatasetLoading] = useState(false),
+    [resultLoading, setResultLoading] = useState(false),
     [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0),
     [result, setResult] = useState(null),
-    [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
-    [searchQuery, setSearchQuery] = useState(""),
-    [lift, setLift] = useState(0),
-    [support, setSupport] = useState(0),
-    [confidence, setConfidence] = useState(0),
-    [sort, setSort] = useState("lift"),
+    [filters, setFilters] = useState({
+      page: 1,
+      query: "",
+      lift: 0,
+      support: 0,
+      confidence: 0,
+      sort: "lift",
+    }),
     [busy, setBusy] = useState(false),
     [renaming, setRenaming] = useState(false),
     [params, setParams] = useState({
@@ -80,8 +94,33 @@ export default function App() {
   const heading = useRef(null),
     focusNextPage = useRef(false),
     selectedRun = useRef(null),
+    statusSnapshot = useRef(null),
     activeRunId = useRef(runId);
   activeRunId.current = runId;
+  const loading = datasetLoading || resultLoading;
+  const { page, query: searchQuery, lift, support, confidence, sort } = filters;
+  const setPage = (value) =>
+    setFilters((current) => ({ ...current, page: value }));
+  const changeFilter = (key, value) =>
+    setFilters((current) => ({ ...current, [key]: value, page: 1 }));
+  const setLift = (value) => changeFilter("lift", value),
+    setSupport = (value) => changeFilter("support", value),
+    setConfidence = (value) => changeFilter("confidence", value),
+    setSort = (value) => changeFilter("sort", value);
+  const pollingEnabled = screen === 0 || screen === 2;
+  useEffect(() => {
+    const restore = () => {
+      setScreen(screenFromUrl());
+      setResult(null);
+      setResultLoading(false);
+      setFilters((current) => ({ ...current, page: 1 }));
+      setMenuOpen(false);
+      setError("");
+      focusNextPage.current = true;
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
   const dataset = datasets.find((d) => d.dataset_id === datasetId);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -95,66 +134,83 @@ export default function App() {
     }
   }, [screen]);
   useEffect(() => {
-    let active = true;
-    setLoading(true);
+    const controller = new AbortController();
+    setDatasetLoading(true);
     api
-      .get("/datasets")
+      .get("/datasets", { signal: controller.signal })
       .then(({ data }) => {
-        if (active) {
+        if (!controller.signal.aborted) {
           setDatasets(data);
           setDatasetId((id) => id || data[0]?.dataset_id || "");
           setRunId((id) => id || data[0]?.latest_run_id || "");
         }
       })
       .catch((e) => {
-        if (active) setError(errorMessage(e));
+        if (!controller.signal.aborted) setError(errorMessage(e));
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (!controller.signal.aborted) setDatasetLoading(false);
       });
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [refresh]);
   useEffect(() => {
     if (!runId) return;
-    let active = true,
-      timer;
+    const controller = new AbortController();
+    let timer;
     const poll = async () => {
       try {
-        const { data } = await api.get(runPath(runId));
-        if (active) {
-          setRun(data);
-          if (data.dataset_id) setDatasetId(data.dataset_id);
-          if (["Queued", "Running"].includes(data.status))
-            timer = setTimeout(poll, 1500);
-        }
-      } catch (error) {
-        if (active) setError(errorMessage(error));
+        const { data } = await api.get(runPath(runId), {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        statusSnapshot.current = { id: runId, refresh, data };
+        setRun(data);
+        if (data.dataset_id) setDatasetId(data.dataset_id);
+        if (pollingEnabled && ["Queued", "Running"].includes(data.status))
+          timer = setTimeout(poll, 1500);
+      } catch (e) {
+        if (!controller.signal.aborted) setError(errorMessage(e));
       }
     };
     if (selectedRun.current?.run_id === runId) {
-      const loaded = selectedRun.current;
+      const data = selectedRun.current;
       selectedRun.current = null;
-      if (["Queued", "Running"].includes(loaded.status))
+      statusSnapshot.current = { id: runId, refresh, data };
+      if (pollingEnabled && ["Queued", "Running"].includes(data.status))
         timer = setTimeout(poll, 1500);
+    } else if (
+      statusSnapshot.current?.id === runId &&
+      statusSnapshot.current.refresh === refresh
+    ) {
+      if (
+        pollingEnabled &&
+        ["Queued", "Running"].includes(statusSnapshot.current.data.status)
+      )
+        poll();
     } else poll();
     return () => {
-      active = false;
+      controller.abort();
       clearTimeout(timer);
     };
-  }, [runId, refresh]);
+  }, [runId, refresh, pollingEnabled]);
   useEffect(() => {
-    const timer = setTimeout(() => setSearchQuery(search), 250);
+    const timer = setTimeout(
+      () =>
+        setFilters((current) =>
+          current.query === search
+            ? current
+            : { ...current, query: search, page: 1 },
+        ),
+      250,
+    );
     return () => clearTimeout(timer);
   }, [search]);
   useEffect(() => {
-    setPage(1);
-  }, [screen, runId, searchQuery, lift, sort, support, confidence]);
-  useEffect(() => {
     if (run?.status !== "Completed" || screen < 3 || screen > 5) return;
     const controller = new AbortController();
-    setLoading(true);
+    setResultLoading(true);
     setError("");
     const path =
       screen === 3 ? "rules" : screen === 4 ? "adjacencies" : "report";
@@ -178,7 +234,7 @@ export default function App() {
         if (e.code !== "ERR_CANCELED") setError(errorMessage(e));
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setResultLoading(false);
       });
     return () => controller.abort();
   }, [
@@ -228,7 +284,9 @@ export default function App() {
       return;
     }
     setResult(null);
+    setResultLoading(false);
     setScreen(index);
+    history.pushState(null, "", `#${pageSlugs[index]}`);
     setError("");
     setFeedback("");
     setPage(1);
@@ -237,8 +295,10 @@ export default function App() {
   }
   function chooseDataset(id) {
     setDatasetId(id);
+    setPage(1);
     setRun(null);
     setResult(null);
+    setResultLoading(false);
     setOverviewPairs(null);
     setOverviewError(false);
     setRunId(datasets.find((d) => d.dataset_id === id)?.latest_run_id || "");
@@ -255,6 +315,7 @@ export default function App() {
     setRunId(next.run_id);
     setDatasetId(next.dataset_id);
     setResult(null);
+    setResultLoading(false);
     setOverviewPairs(null);
     setPage(1);
     setError("");
@@ -293,8 +354,10 @@ export default function App() {
             : Number(params.max_itemset_size),
         dataset_id: datasetId,
       });
+      selectedRun.current = data;
       setRun(data);
       setRunId(data.run_id);
+      setPage(1);
       setFeedback("Mining run submitted. Its status will update here.");
     } catch (e) {
       setError(errorMessage(e));

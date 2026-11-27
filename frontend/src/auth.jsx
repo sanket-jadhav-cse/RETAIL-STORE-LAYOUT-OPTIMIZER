@@ -28,6 +28,11 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState("");
   const scope = useRef({ id: null, controller: new AbortController() });
   useEffect(() => {
+    try {
+      localStorage.removeItem("retailRun");
+    } catch {
+      /* Optional browser storage. */
+    }
     if (!supabase) {
       setReady(true);
       return;
@@ -224,9 +229,8 @@ export function AuthScreen({
         <h1>{titles[mode]}</h1>
         <p className="muted">FP-Growth · Retail Analytics Dashboard</p>
         {!supabase && (
-          <Notice title="Account setup required">
-            Configure the public Supabase URL and publishable key to enable
-            authentication.
+          <Notice>
+            Sign-in is temporarily unavailable. Please try again later.
           </Notice>
         )}
         {error && <Notice kind="error">{error}</Notice>}

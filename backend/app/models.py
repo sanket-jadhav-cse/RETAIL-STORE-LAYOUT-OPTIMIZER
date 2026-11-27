@@ -8,9 +8,12 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     ForeignKeyConstraint,
+    Index,
     Integer,
     String,
     UniqueConstraint,
+    desc,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -64,6 +67,13 @@ class MiningRun(Base):
     __tablename__ = "runs"
     __table_args__ = (
         UniqueConstraint("run_id", "dataset_id"),
+        Index(
+            "ix_runs_owner_created",
+            "owner_id",
+            desc("created_at"),
+            desc("run_id"),
+            postgresql_where=text("owner_id IS NOT NULL"),
+        ),
         CheckConstraint("status IN ('Queued','Running','Completed','Failed')"),
         CheckConstraint("min_support > 0 AND min_support <= 1"),
         CheckConstraint("min_confidence > 0 AND min_confidence <= 1"),
