@@ -3556,3 +3556,18 @@ th {
   .topbar-actions > .button { font-size: 12px; padding-inline: 9px; }
   .topbar-page .breadcrumb > span { display: none; }
 }
+/* Breadcrumb and lower page actions without repeated visible page names. */
+.topbar-page { flex-direction: row; align-items: center; }
+.page-header { min-height: 0; margin-bottom: 16px; }
+.page-header > h1 { margin: 0; font-size: 22px; line-height: 1.3; }
+.page-header-compact { justify-content: flex-end; }
+.page-header-compact:not(:has(> .button)) { height: 0; margin: 0; padding: 0; }
+.page-header > .button { margin-left: auto; }
+@media (max-width: 767px) {
+  .page-header { flex-direction: row; align-items: center; }
+  .page-header > h1 { font-size: 19px; }
+}
+@media (max-width: 767px) {
+  .topbar-page .breadcrumb > span { display: inline; }
+  .topbar-page .breadcrumb { gap: 5px; }
+}
