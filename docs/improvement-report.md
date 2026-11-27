@@ -79,3 +79,6 @@ Analytics package verification: 27 backend tests, 25 frontend tests and all 3 Ch
 
 ## Dependency security corrections
 A real pip-audit scan reported 16 advisory entries (including duplicates) across Starlette 0.46.2 and test-only pytest 8.3.5. Upgraded compatible FastAPI/Starlette to 0.165.0/1.10.0 and pytest to 9.2.0; updated exact lock entries and the new annotated-doc dependency. Repeat pip-audit reports no known vulnerabilities. All 27 backend tests pass under the updated framework. Existing httpx TestClient support emits a deprecation warning; a second HTTP library was not introduced merely to silence it. Runtime pip check passes after refreshing editable project metadata.
+
+## Public sign-in wording
+Removed the requested developer-only “Account setup required” / configuration instructions from the public sign-in form. Missing configuration now produces a neutral temporary-unavailability message and prevents submission, rather than exposing deployment details or pretending account access works. A targeted DOM regression verifies the prohibited wording is absent and the form fails closed. Live enablement still needs the existing project's public publishable/anon key; a database password cannot replace it. Supabase integration discovery found an available but unconnected integration; connection is still owner-controlled.
