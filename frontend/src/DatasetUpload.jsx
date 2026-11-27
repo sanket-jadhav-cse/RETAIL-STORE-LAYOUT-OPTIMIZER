@@ -117,6 +117,12 @@ export default function DatasetUpload({ onReady, onNavigate }) {
   return (
     <div className="upload-layout">
       <section className="panel upload-main">
+        <div className="upload-panel-actions">
+          <button type="button" className="button secondary" onClick={() => onNavigate(1)}>
+            <Icon name="database" />
+            Back to Datasets
+          </button>
+        </div>
         <ol className="upload-steps" aria-label="Upload steps">
           {["Select file", "Validate & map", "Processing", "Ready"].map(
             (title, i) => (
