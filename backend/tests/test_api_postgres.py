@@ -738,3 +738,32 @@ def test_watchdog_persists_failure_and_releases_child(store, monkeypatch):
     finally:
         runner.close()
     assert not runner.thread.is_alive()
+
+
+def test_artifact_repair_preserves_custom_provenance(
+    client, store, monkeypatch, tmp_path
+):
+    from scripts import import_dataset as importer
+
+    monkeypatch.setattr(importer, "Session", store)
+    path = tmp_path / "shop.csv"
+    path.write_text("InvoiceNo,StockCode,Description,Quantity\n1,A,Apple,1\n")
+    identifier = importer.import_dataset(
+        path,
+        name="Verified Store Purchases",
+        description="Owner supplied description",
+        source="North Store Export",
+        source_url="https://example.invalid/source",
+        owner_id=uuid.UUID(int=1),
+    )
+    with store() as session:
+        row = session.get(Dataset, identifier)
+        (settings.data_dir / f"{row.checksum}.json").unlink()
+    assert importer.import_dataset(path) == identifier
+    with store() as session:
+        row = session.get(Dataset, identifier)
+        assert row.name == "Verified Store Purchases"
+        assert row.description == "Owner supplied description"
+        assert row.source == "North Store Export"
+        assert row.source_url == "https://example.invalid/source"
+        assert row.owner_id == uuid.UUID(int=1) and not row.is_shared
