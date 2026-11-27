@@ -326,16 +326,17 @@
   position: fixed;
   inset-block: 0;
   inset-inline-start: 0;
-  width: 254px;
   background: var(--color-nav-bg);
   color: var(--color-nav-text);
   z-index: 30;
   display: flex;
   flex-direction: column;
-  padding: 32px 16px 20px;
+  width: 232px;
+  padding: 22px 12px 16px;
+  border-inline-end: 1px solid var(--color-border);
 }
 .brand-row {
-  padding-inline: 12px;
+  padding-inline: 8px;
 }
 .brand {
   display: flex;
@@ -347,20 +348,20 @@
   height: 39px;
   display: grid;
   place-items: center;
-  background: var(--color-nav-accent);
-  color: var(--color-nav-bg);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-accent-text);
 }
 .brand-mark .icon {
   width: 23px;
   height: 23px;
 }
 .brand > div > span {
-  font-size: 1.3rem;
   line-height: 1.2;
   font-weight: 650;
   letter-spacing: -0.035em;
   color: var(--color-nav-title);
+  font-size: 1.1rem;
 }
 .brand small {
   display: block;
@@ -384,7 +385,7 @@
   text-transform: uppercase;
   color: var(--color-nav-muted);
   padding: 0 14px;
-  margin-block: 43px 12px;
+  margin-block: 30px 12px;
 }
 .sidebar nav {
   display: flex;
@@ -413,7 +414,7 @@
   background: var(--color-nav-selected);
   color: var(--color-nav-title);
   font-weight: 600;
-  border-color: var(--color-nav-selected);
+  border-color: var(--color-border);
 }
 .nav-indicator {
   margin-inline-start: auto;
@@ -422,24 +423,9 @@
   background: var(--color-nav-accent);
   border-radius: 50%;
 }
-.avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 0.75rem;
-  font-weight: 650;
-  flex: none;
-}
-.avatar {
-  background: var(--color-nav-selected);
-  color: var(--color-nav-accent);
-}
 .workspace {
-  margin-inline-start: 254px;
   min-width: 0;
+  margin-inline-start: 232px;
 }
 .topbar {
   height: 76px;
@@ -448,8 +434,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
   padding-inline: 36px;
+  gap: 14px;
 }
 .breadcrumb {
   display: flex;
@@ -467,6 +453,7 @@
   display: flex;
   gap: 18px;
   align-items: center;
+  margin-inline-start: auto;
 }
 .engine-label {
   font-size: 0.75rem;
@@ -611,11 +598,11 @@ details[open] > summary > .icon {
 }
 .panel {
   background: var(--color-bg-surface);
-  border: 1px solid transparent;
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: var(--shadow-surface);
   min-width: 0;
+  border: 1px solid var(--color-border);
 }
 .section-heading {
   display: flex;
@@ -681,12 +668,12 @@ details[open] > summary > .icon {
   gap: 16px;
 }
 .metric {
-  padding: 20px 22px;
   background: var(--color-bg-surface);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
   box-shadow: var(--shadow-surface);
   min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
 }
 .metric-heading {
   display: flex;
@@ -712,12 +699,12 @@ details[open] > summary > .icon {
 }
 .metric > strong {
   display: block;
-  font-size: 2rem;
   line-height: 1.25;
   letter-spacing: -0.04em;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   margin-block: 8px;
+  font-size: 1.8rem;
 }
 .metric > p {
   font-size: 0.75rem;
@@ -1359,12 +1346,12 @@ details[open] > summary > .icon {
 }
 .graph-node-label {
   fill: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 550;
   paint-order: stroke;
   stroke: var(--color-graph-bg);
   stroke-width: 4px;
   pointer-events: none;
+  font-size: 10px;
+  font-weight: 500;
 }
 .graph-selection {
   background: var(--color-bg-page);
@@ -1529,12 +1516,6 @@ details[open] > summary > .icon {
   }
   .topbar {
     padding-inline: 24px;
-  }
-  .sidebar {
-    width: 234px;
-  }
-  .workspace {
-    margin-inline-start: 234px;
   }
   .overview-columns,
   .dataset-columns {
@@ -2075,31 +2056,6 @@ details[open] > summary > .icon {
   }
 }
 /* Responsive account dashboard shell. */
-.sidebar {
-  width: 232px;
-  padding: 22px 12px 16px;
-  border-inline-end: 1px solid var(--color-border);
-}
-.workspace {
-  margin-inline-start: 232px;
-}
-.brand-row {
-  padding-inline: 8px;
-}
-.brand-mark {
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-subtle);
-  color: var(--color-accent-text);
-}
-.brand > div > span {
-  font-size: 1.1rem;
-}
-.nav-label {
-  margin-block: 30px 12px;
-}
-.nav-item.active {
-  border-color: var(--color-border);
-}
 .nav-item.active::before {
   content: "";
   position: absolute;
@@ -2118,12 +2074,6 @@ details[open] > summary > .icon {
   font-size: 0.75rem;
   overflow-wrap: anywhere;
   color: var(--color-text-secondary);
-}
-.topbar {
-  gap: 14px;
-}
-.topbar-actions {
-  margin-inline-start: auto;
 }
 .sidebar[data-collapsed="true"] {
   width: 72px;
@@ -2192,17 +2142,6 @@ details[open] > summary > .icon {
   color: var(--color-success-text);
   font-size: 0.8rem;
   margin-top: 10px;
-}
-.panel {
-  border: 1px solid var(--color-border);
-}
-.metric {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: 20px;
-}
-.metric > strong {
-  font-size: 1.8rem;
 }
 .drawer-overlay {
   position: fixed;
@@ -2287,10 +2226,6 @@ details[open] > summary > .icon {
 .pair-rank,
 .lift-badge {
   color: var(--color-text-primary);
-}
-.graph-node-label {
-  font-size: 10px;
-  font-weight: 500;
 }
 .graph-label-guide {
   stroke: var(--color-border);

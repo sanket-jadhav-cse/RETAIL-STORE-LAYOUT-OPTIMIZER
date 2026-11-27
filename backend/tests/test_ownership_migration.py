@@ -69,7 +69,8 @@ def test_additive_migration_and_pooled_identity():
                 ),
                 {"id": uuid.UUID(int=99)},
             ).one()
-            assert legacy.run_id == uuid.UUID(int=99) and legacy.owner_id is None
+            assert legacy.run_id == uuid.UUID(int=99)
+            assert legacy.owner_id is None
             assert legacy.name.startswith("Market Basket Analysis")
             conn.execute(text(f"CREATE ROLE {role} NOLOGIN"))
             conn.execute(text(f"GRANT {role} TO CURRENT_USER"))

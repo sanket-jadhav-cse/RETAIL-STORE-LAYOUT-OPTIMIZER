@@ -122,5 +122,5 @@ it("keeps recoverable errors open and supports retry and empty results", async (
   fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
   await screen.findByRole("alert");
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-  await screen.findByText(/No previous runs yet/);
+  expect(await screen.findByText(/No previous runs yet/)).toBeInTheDocument();
 });
