@@ -38,7 +38,14 @@ engine = create_engine(
     max_overflow=0,
     pool_timeout=10,
     pool_recycle=900,
-    connect_args={"connect_timeout": 10},
+    connect_args={
+        "connect_timeout": 10,
+        "options": "-c statement_timeout=30000 -c lock_timeout=5000",
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 3,
+        "tcp_user_timeout": 20000,
+    },
     hide_parameters=True,
 )
 Session = sessionmaker(engine, expire_on_commit=False)

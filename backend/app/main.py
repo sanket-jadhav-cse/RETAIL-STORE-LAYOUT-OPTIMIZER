@@ -1,6 +1,5 @@
 import csv
 import io
-import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Annotated
@@ -11,12 +10,11 @@ from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
 from app.schemas import DatasetOut, RunHistory, RunInput, RunName, RunOut
 from app.worker import LOCK_ID, Runner
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import AwareDatetime
 from sqlalchemy import String, cast, func, or_, select, text
-from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import defer
 
@@ -53,13 +51,15 @@ def db(user=Depends(current_user)):
 
 
 DB = Annotated[object, Depends(db)]
-PAGE = Annotated[int, Query(ge=1)]
+PAGE = Annotated[int, Query(ge=1, le=100000)]
 SIZE = Annotated[int, Query(ge=1, le=100)]
 
 
-def get(session, model, identifier):
+def get(session, model, identifier, include_itemsets=False):
     query = select(model)
     if model is MiningRun:
+        if not include_itemsets:
+            query = query.options(defer(MiningRun.itemsets, raiseload=True))
         query = query.where(
             model.owner_id == session.info["user_id"], model.run_id == identifier
         )
@@ -74,35 +74,26 @@ def get(session, model, identifier):
     return value
 
 
-def completed(session, identifier):
-    run = get(session, MiningRun, identifier)
+def completed(session, identifier, include_itemsets=False):
+    run = get(session, MiningRun, identifier, include_itemsets=include_itemsets)
     if run.status != "Completed":
         raise HTTPException(409, f"Results not ready: {run.status}")
     return run
-
-
-def operator(authorization: Annotated[str | None, Header()] = None):
-    expected = settings.operator_token
-    if not expected or not secrets.compare_digest(
-        authorization or "", f"Bearer {expected}"
-    ):
-        raise HTTPException(
-            401, "Operator token required", headers={"WWW-Authenticate": "Bearer"}
-        )
 
 
 def mining_busy(session):
     return session.scalar(select(func.retail.mining_busy()))
 
 
-def names(session, dataset_id):
-    return dict(
-        session.execute(
-            select(Product.product_code, Product.description).where(
-                Product.dataset_id == dataset_id
-            )
-        ).all()
+def names(session, dataset_id, codes=None):
+    query = select(Product.product_code, Product.description).where(
+        Product.dataset_id == dataset_id
     )
+    if codes is not None:
+        if not codes:
+            return {}
+        query = query.where(Product.product_code.in_(codes))
+    return dict(session.execute(query).all())
 
 
 def rule_dict(row, labels):
@@ -135,25 +126,29 @@ def health():
 
 @app.get("/api/v1/datasets", response_model=list[DatasetOut])
 def datasets(session: DB):
-    rows = session.scalars(
-        select(Dataset)
+    latest = (
+        select(MiningRun.run_id)
+        .where(
+            MiningRun.dataset_id == Dataset.dataset_id,
+            MiningRun.owner_id == session.info["user_id"],
+        )
+        .order_by(MiningRun.created_at.desc(), MiningRun.run_id.desc())
+        .limit(1)
+        .correlate(Dataset)
+        .scalar_subquery()
+    )
+    rows = session.execute(
+        select(Dataset, latest.label("latest_run_id"))
         .where(
             Dataset.is_shared.is_(True) | (Dataset.owner_id == session.info["user_id"])
         )
         .order_by(Dataset.imported_at.desc())
         .limit(100)
     ).all()
-    for row in rows:
-        row.latest_run_id = session.scalar(
-            select(MiningRun.run_id)
-            .where(
-                MiningRun.dataset_id == row.dataset_id,
-                MiningRun.owner_id == session.info["user_id"],
-            )
-            .order_by(MiningRun.created_at.desc())
-            .limit(1)
-        )
-    return rows
+    return [
+        DatasetOut.model_validate(row).model_copy(update={"latest_run_id": latest_id})
+        for row, latest_id in rows
+    ]
 
 
 @app.get("/api/v1/datasets/{id}/summary", response_model=DatasetOut)
@@ -283,7 +278,7 @@ def run_status(id: UUID, session: DB):
 
 @app.get("/api/v1/runs/{id}/itemsets")
 def itemsets(id: UUID, session: DB, page: PAGE = 1, page_size: SIZE = 25):
-    run = completed(session, id)
+    run = completed(session, id, include_itemsets=True)
     start = (page - 1) * page_size
     return {
         "items": run.itemsets[start : start + page_size],
@@ -304,7 +299,6 @@ def rules(
     min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
 ):
     run = completed(session, id)
-    labels = names(session, run.dataset_id)
     query = select(AssociationRule).where(
         AssociationRule.run_id == id,
         AssociationRule.lift >= min_lift,
@@ -312,15 +306,19 @@ def rules(
         AssociationRule.confidence >= min_confidence,
     )
     if search:
-        matching = [
-            code
-            for code, label in labels.items()
-            if search.lower() in label.lower() or search.lower() in code.lower()
-        ]
-        query = query.where(
-            AssociationRule.antecedent.has_any(array(matching, type_=String))
-            | AssociationRule.consequent.has_any(array(matching, type_=String))
+        match = (
+            select(Product.product_code)
+            .where(
+                Product.dataset_id == run.dataset_id,
+                Product.description.icontains(search, autoescape=True)
+                | Product.product_code.icontains(search, autoescape=True),
+                AssociationRule.antecedent.has_key(Product.product_code)
+                | AssociationRule.consequent.has_key(Product.product_code),
+            )
+            .correlate(AssociationRule)
+            .exists()
         )
+        query = query.where(match)
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = session.scalars(
         query.order_by(
@@ -332,14 +330,15 @@ def rules(
         )
         .offset((page - 1) * page_size)
         .limit(page_size)
-    )
+    ).all()
+    codes = {code for row in rows for code in row.antecedent + row.consequent}
+    labels = names(session, run.dataset_id, codes)
     return {"items": [rule_dict(r, labels) for r in rows], "total": total}
 
 
 def pair_results(
     run, session, page, page_size, min_lift=0, min_confidence=0, search=""
 ):
-    labels = names(session, run.dataset_id)
     query = select(Adjacency).where(
         Adjacency.run_id == run.run_id, Adjacency.lift >= min_lift
     )
@@ -349,17 +348,22 @@ def pair_results(
             >= min_confidence
         )
     if search:
-        matching = [
-            code
-            for code, label in labels.items()
-            if search.lower() in label.lower() or search.lower() in code.lower()
-        ]
+        matching = select(Product.product_code).where(
+            Product.dataset_id == run.dataset_id,
+            Product.description.icontains(search, autoescape=True)
+            | Product.product_code.icontains(search, autoescape=True),
+        )
         query = query.where(
             Adjacency.product_a.in_(matching) | Adjacency.product_b.in_(matching)
         )
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = session.scalars(
         query.order_by(Adjacency.rank).offset((page - 1) * page_size).limit(page_size)
+    ).all()
+    labels = names(
+        session,
+        run.dataset_id,
+        {code for row in rows for code in (row.product_a, row.product_b)},
     )
     return {"items": [pair_dict(row, labels) for row in rows], "total": total}
 
