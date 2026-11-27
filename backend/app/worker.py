@@ -120,7 +120,7 @@ class Runner:
                 return
             except Exception:
                 self.release_connection()
-                delay = min(delay * 2, 30)
+                delay = min(delay * 2, settings.scheduler_reconnect_max_seconds)
 
     def ensure_lock(self):
         # A reconnected session must not silently continue without its lock.
