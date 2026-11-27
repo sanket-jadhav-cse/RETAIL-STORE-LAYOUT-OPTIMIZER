@@ -155,10 +155,14 @@ async function setup(page, { signedIn = true } = {}) {
 }
 async function navigate(page, name) {
   const button = page.getByRole("button", { name, exact: true });
-  if (!(await button.isVisible()))
-    await page
-      .getByRole("button", { name: "Open navigation", exact: true })
-      .click();
+  if (page.viewportSize().width < 960) {
+    const trigger = page.getByRole("button", {
+      name: "Open navigation",
+      exact: true,
+    });
+    await expect(trigger).toBeVisible();
+    if (!(await button.isVisible())) await trigger.click();
+  }
   await button.click();
   await expect(page.getByText("Loading data…", { exact: true })).toHaveCount(0);
 }

@@ -16,6 +16,64 @@ from app.models import Dataset, Product
 from sqlalchemy import select, text
 
 
+def dataset_metadata(path, checksum, summary, name, description, source, source_url):
+    if checksum == UCI_CHECKSUM:
+        metadata = dict(UCI_METADATA)
+    else:
+        display_name = (
+            name.strip()
+            if name
+            else path.stem.replace("_", " ").replace("-", " ").strip().title()[:200]
+        )
+        metadata = {
+            "name": display_name or "Imported transaction dataset",
+            "description": description.strip()[:1000] if description else None,
+            "source": source or "Owner-provided transaction file",
+            "source_url": source_url,
+            "source_organization": None,
+            "doi": None,
+        }
+    metadata.update(
+        transaction_start=date.fromisoformat(summary["transaction_start"])
+        if summary.get("transaction_start")
+        else None,
+        transaction_end=date.fromisoformat(summary["transaction_end"])
+        if summary.get("transaction_end")
+        else None,
+        processing_status="Ready",
+    )
+    return metadata
+
+
+def write_artifact(checksum, baskets):
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    artifact = settings.data_dir / f"{checksum}.json"
+    with NamedTemporaryFile(mode="w", dir=settings.data_dir, delete=False) as output:
+        json.dump(baskets, output)
+        temporary = output.name
+    try:
+        os.replace(temporary, artifact)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def refresh_existing(existing, checksum, baskets, products, summary, metadata):
+    if existing.basket_count != len(baskets) or existing.summary.get(
+        "product_count"
+    ) != len(products):
+        raise ValueError(
+            "Recalculated dataset statistics differ; investigate before updating"
+        )
+    for key, value in metadata.items():
+        setattr(existing, key, value)
+    existing.summary = summary
+    if checksum == UCI_CHECKSUM:
+        existing.is_shared = True
+    print("Verified metadata/artifact:", existing.dataset_id)
+    return existing.dataset_id
+
+
 def import_dataset(
     path,
     *,
@@ -45,59 +103,19 @@ def import_dataset(
     baskets, products, summary = preprocess(load(path))
     if not baskets:
         raise ValueError("No eligible baskets")
-    metadata = (
-        dict(UCI_METADATA)
-        if checksum == UCI_CHECKSUM
-        else dict(
-            name=name.strip()
-            if name
-            else path.stem.replace("_", " ").replace("-", " ").strip().title()[:200]
-            or "Imported transaction dataset",
-            description=description.strip()[:1000] if description else None,
-            source=source or "Owner-provided transaction file",
-            source_url=source_url,
-            source_organization=None,
-            doi=None,
-        )
+    metadata = dataset_metadata(
+        path, checksum, summary, name, description, source, source_url
     )
-    metadata.update(
-        transaction_start=date.fromisoformat(summary["transaction_start"])
-        if summary.get("transaction_start")
-        else None,
-        transaction_end=date.fromisoformat(summary["transaction_end"])
-        if summary.get("transaction_end")
-        else None,
-        processing_status="Ready",
-    )
-    settings.data_dir.mkdir(parents=True, exist_ok=True)
-    artifact = settings.data_dir / f"{checksum}.json"
-    with NamedTemporaryFile(mode="w", dir=settings.data_dir, delete=False) as output:
-        json.dump(baskets, output)
-        temporary = output.name
-    try:
-        os.replace(temporary, artifact)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    write_artifact(checksum, baskets)
     with Session.begin() as session:
         session.execute(
             text("SELECT pg_advisory_xact_lock(:key)"), {"key": int(checksum[:15], 16)}
         )
         existing = session.scalar(select(Dataset).where(Dataset.checksum == checksum))
         if existing:
-            if existing.basket_count != len(baskets) or existing.summary.get(
-                "product_count"
-            ) != len(products):
-                raise ValueError(
-                    "Recalculated dataset statistics differ; investigate before updating"
-                )
-            for key, value in metadata.items():
-                setattr(existing, key, value)
-            existing.summary = summary
-            if checksum == UCI_CHECKSUM:
-                existing.is_shared = True
-            print("Verified metadata/artifact:", existing.dataset_id)
-            return existing.dataset_id
+            return refresh_existing(
+                existing, checksum, baskets, products, summary, metadata
+            )
         dataset = Dataset(
             **metadata,
             version="sha256:" + checksum[:12],

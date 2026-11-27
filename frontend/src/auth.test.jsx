@@ -73,7 +73,9 @@ it("signup leads to email verification and forgot password gives neutral feedbac
   fireEvent.click(
     screen.getByRole("button", { name: "Create account", exact: true }),
   );
-  await screen.findByRole("heading", { name: "Verify your email" });
+  expect(
+    await screen.findByRole("heading", { name: "Verify your email" }),
+  ).toBeInTheDocument();
   fireEvent.click(
     screen.getByRole("button", { name: "Forgot password", exact: true }),
   );
@@ -83,7 +85,9 @@ it("signup leads to email verification and forgot password gives neutral feedbac
   fireEvent.click(
     screen.getByRole("button", { name: "Forgot password", exact: true }),
   );
-  await screen.findByText(/If an account can receive email/);
+  expect(
+    await screen.findByText(/If an account can receive email/),
+  ).toBeInTheDocument();
 });
 it("expired password reset gives a recoverable error", async () => {
   mocks.updateUser.mockResolvedValue({ error: { message: "Expired link" } });
@@ -99,11 +103,9 @@ it("expired password reset gives a recoverable error", async () => {
 
 it("restores a session and remounts private state on account switching and logout", async () => {
   let change;
-  mocks.getSession = vi
-    .fn()
-    .mockResolvedValue({
-      data: { session: { user: { id: "account-a", email: "a@example.test" } } },
-    });
+  mocks.getSession = vi.fn().mockResolvedValue({
+    data: { session: { user: { id: "account-a", email: "a@example.test" } } },
+  });
   mocks.onAuthStateChange = vi.fn((callback) => {
     change = callback;
     return { data: { subscription: { unsubscribe: vi.fn() } } };

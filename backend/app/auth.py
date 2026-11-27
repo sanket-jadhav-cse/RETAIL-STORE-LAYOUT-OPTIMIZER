@@ -10,6 +10,8 @@ import jwt
 from app.config import settings
 from fastapi import Header, HTTPException
 
+UNAVAILABLE = "Account verification temporarily unavailable"
+
 
 @dataclass(frozen=True)
 class Identity:
@@ -44,9 +46,7 @@ def verify_claims(token):
             raise jwt.InvalidTokenError()
         return claims
     except jwt.PyJWKClientConnectionError:
-        raise HTTPException(
-            503, "Account verification temporarily unavailable"
-        ) from None
+        raise HTTPException(503, UNAVAILABLE) from None
     except (jwt.PyJWTError, ValueError, KeyError):
         raise HTTPException(
             401, "Invalid or expired session", headers={"WWW-Authenticate": "Bearer"}
@@ -78,7 +78,7 @@ def current_user(authorization: Annotated[str | None, Header()] = None):
         if response.status_code in (401, 403):
             raise HTTPException(401, "Session no longer available")
         if response.status_code != 200:
-            raise HTTPException(503, "Account verification temporarily unavailable")
+            raise HTTPException(503, UNAVAILABLE)
         profile = response.json()
         if profile.get("id") != claims["sub"]:
             raise HTTPException(401, "Invalid session identity")
@@ -86,6 +86,4 @@ def current_user(authorization: Annotated[str | None, Header()] = None):
             raise HTTPException(403, "Verify your email before continuing")
         return Identity(UUID(claims["sub"]), profile.get("email", ""), profile)
     except (httpx.HTTPError, ValueError):
-        raise HTTPException(
-            503, "Account verification temporarily unavailable"
-        ) from None
+        raise HTTPException(503, UNAVAILABLE) from None
