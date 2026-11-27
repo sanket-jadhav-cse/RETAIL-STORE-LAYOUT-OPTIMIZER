@@ -300,11 +300,16 @@ def rules(
     search: Annotated[str, Query(max_length=100)] = "",
     min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
     sort: Annotated[str, Query(pattern="^(lift|support|confidence)$")] = "lift",
+    min_support: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
 ):
     run = completed(session, id)
     labels = names(session, run.dataset_id)
     query = select(AssociationRule).where(
-        AssociationRule.run_id == id, AssociationRule.lift >= min_lift
+        AssociationRule.run_id == id,
+        AssociationRule.lift >= min_lift,
+        AssociationRule.support >= min_support,
+        AssociationRule.confidence >= min_confidence,
     )
     if search:
         matching = [
@@ -313,8 +318,8 @@ def rules(
             if search.lower() in label.lower() or search.lower() in code.lower()
         ]
         query = query.where(
-            AssociationRule.antecedent.has_any(array(matching))
-            | AssociationRule.consequent.has_any(array(matching))
+            AssociationRule.antecedent.has_any(array(matching, type_=String))
+            | AssociationRule.consequent.has_any(array(matching, type_=String))
         )
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = session.scalars(
@@ -331,6 +336,34 @@ def rules(
     return {"items": [rule_dict(r, labels) for r in rows], "total": total}
 
 
+def pair_results(
+    run, session, page, page_size, min_lift=0, min_confidence=0, search=""
+):
+    labels = names(session, run.dataset_id)
+    query = select(Adjacency).where(
+        Adjacency.run_id == run.run_id, Adjacency.lift >= min_lift
+    )
+    if min_confidence:
+        query = query.where(
+            func.greatest(Adjacency.confidence_a_b, Adjacency.confidence_b_a)
+            >= min_confidence
+        )
+    if search:
+        matching = [
+            code
+            for code, label in labels.items()
+            if search.lower() in label.lower() or search.lower() in code.lower()
+        ]
+        query = query.where(
+            Adjacency.product_a.in_(matching) | Adjacency.product_b.in_(matching)
+        )
+    total = session.scalar(select(func.count()).select_from(query.subquery()))
+    rows = session.scalars(
+        query.order_by(Adjacency.rank).offset((page - 1) * page_size).limit(page_size)
+    )
+    return {"items": [pair_dict(row, labels) for row in rows], "total": total}
+
+
 @app.get("/api/v1/runs/{id}/adjacencies")
 def adjacencies(
     id: UUID,
@@ -338,15 +371,11 @@ def adjacencies(
     page: PAGE = 1,
     page_size: SIZE = 25,
     min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+    search: Annotated[str, Query(max_length=100)] = "",
 ):
     run = completed(session, id)
-    query = select(Adjacency).where(Adjacency.run_id == id, Adjacency.lift >= min_lift)
-    total = session.scalar(select(func.count()).select_from(query.subquery()))
-    rows = session.scalars(
-        query.order_by(Adjacency.rank).offset((page - 1) * page_size).limit(page_size)
-    )
-    labels = names(session, run.dataset_id)
-    return {"items": [pair_dict(r, labels) for r in rows], "total": total}
+    return pair_results(run, session, page, page_size, min_lift, min_confidence, search)
 
 
 def report_data(id, session):
@@ -356,12 +385,23 @@ def report_data(id, session):
 
 
 @app.get("/api/v1/runs/{id}/report")
-def report(id: UUID, session: DB, page: PAGE = 1, page_size: SIZE = 25):
-    run, dataset, _ = report_data(id, session)
+def report(
+    id: UUID,
+    session: DB,
+    page: PAGE = 1,
+    page_size: SIZE = 25,
+    search: Annotated[str, Query(max_length=100)] = "",
+    min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+):
+    run = completed(session, id)
+    dataset = get(session, Dataset, run.dataset_id)
     return {
         "run": RunOut.model_validate(run),
         "dataset": DatasetOut.model_validate(dataset),
-        "recommendations": adjacencies(id, session, page, page_size, 0),
+        "recommendations": pair_results(
+            run, session, page, page_size, min_lift, min_confidence, search
+        ),
         "review": "Evidence-based conceptual adjacency only. Check aisle space, safety, category compatibility and seasonality. No causal sales improvement demonstrated.",
     }
 
@@ -394,7 +434,10 @@ def report_csv(id: UUID, session: DB):
                 k: (
                     "'" + v
                     if isinstance(v, str)
-                    and v.startswith(("=", "+", "-", "@", "\t", "\r"))
+                    and (
+                        v.startswith(("\t", "\r", "\n"))
+                        or v.lstrip().startswith(("=", "+", "-", "@"))
+                    )
                     else v
                 )
                 for k, v in data.items()
