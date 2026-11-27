@@ -1,11 +1,13 @@
-# Demonstration and presentation
-1. Start backend and frontend using README. Open http://localhost:5173.
-2. Dashboard: show actual dataset baskets/products and latest completed run counts.
-3. Dataset: explain sequential exclusions, missing-customer retention and Boolean product presence.
-4. Configure mining: explain support .02, confidence .50, lift 1, itemset size 3. Enter the local operator token privately. Never display `.env` on the projector. Submit once and show Queued/Running/Completed.
-5. Rules: search "REGENCY", sort confidence, inspect directional metrics and pagination.
-6. Visualization: inspect a tea-cup relationship, select an edge, zoom/pan/reset; emphasize conceptual adjacency rather than physical floor planning.
-7. Report: show ranked pairs, thresholds and caveats; export CSV and compare with graph evidence.
-8. Refresh/reopen: results persist in PostgreSQL. Show /docs without displaying credentials.
+# Local demo
 
-Suggested slides: problem and users; scope and non-causal decision support; dataset and cleaning; FP-Growth and metric definitions; architecture/data flow/ERD; six-screen demo; measured real results/resources; correctness tests and limitations; Supabase/Render/Vercel deployment plan; future planner validation and real floor-plan overlay (only with dimensions).
+1. Start the backend and frontend using the [README](../README.md); both use root `.env`. Open http://localhost:5173.
+2. Create/verify an account or sign in with an authorized verified account. There is no shared app password. Use Forgot password when needed.
+3. Overview: select UCI Online Retail Dataset and inspect actual dates, 20,728 baskets and 3,829 products. New accounts see no private legacy history.
+4. Mining: name a baseline analysis; support .02, confidence .50, lift 1.0, maximum size 3. Submit once and wait for Completed. Every eligible basket is used. Global concurrency and six submissions/account/hour apply.
+5. Search/load an owned completed analysis through previous-run selection. Expected baseline: 358 itemsets, 52 rules, 38 recommendations.
+6. Association Rules: search product names, filter metrics, sort columns and paginate. Hover a table and scroll; on narrow screens, use horizontal scrolling/keyboard access.
+7. Product Layout: inspect a relationship, its support/directional confidence/lift, zoom/pan and reset. This is conceptual adjacency, not a physical floor plan.
+8. Reports: review dataset/configuration and explanations, search recommendations and export the complete authorized CSV.
+9. Collapse the sidebar, inspect account/profile, test mobile navigation, then sign out. Private selections clear and direct application entry returns to sign-in.
+
+Use dedicated test accounts for repeatable demonstrations and do not change limits to avoid HTTP 429. Owner-managed email redirects and hosting checks remain in the [deployment runbook](deployment.md). Safe screenshots and evidence are in the [improvement report](improvement-report.md).

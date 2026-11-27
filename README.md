@@ -1,61 +1,142 @@
 # Retail Store Layout Optimizer (FP-Growth)
-Sanket Jadhav 
 
-Analyze invoice-level purchases and inspect explainable product-adjacency candidates. Six responsive screens cover data quality, mining, rules, an interactive conceptual graph and CSV evidence reports, with persistent light/dark themes and keyboard-accessible controls. Recommendations support merchandising judgment; no sales increase or optimal physical layout is claimed.
+Account-based retail analytics: inspect transaction quality, mine product associations, explore conceptual product adjacency, and export evidence reports. React/JavaScript/Vite/Tailwind, FastAPI, SQLAlchemy/Alembic, Supabase Auth/PostgreSQL, and mlxtend FP-Growth. Recommendations support merchandising review; the graph is not a measured physical floor plan.
 
-React/JavaScript/Vite/Tailwind/Axios frontend → FastAPI/Pydantic backend → Supabase PostgreSQL/SQLAlchemy/Alembic. pandas/NumPy/mlxtend perform CPU-based FP-Growth. A single bounded child process executes mining.
+## Run locally
 
-## Local setup (Linux / WSL)
-Prerequisites: Python 3.12, Node 22.12+ (22 LTS recommended), npm, PostgreSQL credentials and internet for the UCI dataset. Native Windows is not supported by the Unix resource watchdog; use WSL.
+Requires Python 3.12, Node 22.12+, PostgreSQL and Linux/WSL. This workspace already has its real dataset and database migrations; do not reset or reimport them unnecessarily.
 
-From repository root:
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r backend/requirements.lock
 .venv/bin/pip install --no-deps -e backend
-cd frontend
-npm ci
-cd ..
-.venv/bin/python backend/scripts/setup_env.py
-.venv/bin/python backend/scripts/check_db.py
-cd backend
-../.venv/bin/alembic upgrade head
-cd ..
-.venv/bin/python backend/scripts/configure_role.py
-.venv/bin/python backend/scripts/activate_runtime.py
-.venv/bin/python backend/scripts/download_dataset.py
-.venv/bin/python backend/scripts/import_dataset.py 'data/raw/Online Retail.xlsx'
-```
-Setup accepts the database password without echoing and URL-encodes special characters. It never overwrites an existing `.env`. **This workspace is already configured, migrated and imported**; the commands above describe a new installation. Do not recreate the existing role. See [deployment](docs/deployment.md) for role ownership and migration details. The original [UCI dataset](https://archive.ics.uci.edu/dataset/352/online+retail) is CC BY 4.0, Chen (2015); provenance and measured cleaning counts are in [data/README.md](data/README.md).
-
-Start backend:
-```bash
+npm --prefix frontend ci
+# NEW installation only: copy .env.example to ROOT .env and fill it privately.
 .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --no-access-log
 ```
-In another terminal:
-```bash
-cd frontend
-cp .env.example .env.local
-npm run dev
-```
-Open http://localhost:5173; API docs: http://localhost:8000/docs. The dashboard loads the latest persisted run automatically. Mining requires the `OPERATOR_TOKEN` from your local `backend/.env`; enter it in the password field. Never paste the database password into the browser. Keep all `.env` files private.
+
+In another terminal, run `npm --prefix frontend run dev` and open **http://localhost:5173**. Sign up, verify your email, then sign in. Use Forgot password for recovery; there is no shared application password.
+
+**One local settings file: root `.env`.** Set `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `API_BASE_URL` and `CORS_ALLOWED_ORIGINS`; see the [placeholder example](.env.example). The browser receives only public configuration. Keep owner migration credentials local. After editing settings, restart the backend and frontend. Old backend/frontend env files are no longer used. New database/role/import setup and Supabase email redirect configuration are in the [deployment runbook](docs/deployment.md).
+
+The verified [UCI Online Retail Dataset](https://archive.ics.uci.edu/dataset/352/online+retail) spans 2010-12-01–2011-12-09: 541,909 source rows, 526,054 cleaned rows, 20,728 baskets and 3,829 products. Support 0.02, confidence 0.50, lift 1.0 and size 3 reproduce **358 itemsets / 52 rules / 38 recommendations**. Counts shown in the app come from persisted metadata/results. [Provenance](data/README.md).
+
+## Screens and features
+
+Screenshots use actual exported UCI aggregates with an isolated test identity, so account details and credentials remain private. Open an image for full-size detail. Live Supabase verification and limitations are recorded separately in the [improvement report](docs/improvement-report.md).
+
+<details>
+<summary>Overview — dataset availability, actual metrics and recent mining history</summary>
+
+Select a dataset, inspect its quality and open a previous analysis. Run controls appear on the analysis pages where needed.
+
+![Overview with actual UCI metrics](docs/images/after/overview.png)
+
+</details>
+
+<details>
+<summary>Datasets — searchable catalog, dates, source and preprocessing evidence</summary>
+
+Dataset names and counts come from PostgreSQL; unrelated imports retain their own provenance.
+
+![Dataset catalog and preprocessing](docs/images/after/datasets.png)
+
+</details>
+
+<details>
+<summary>Mining — named runs, validated thresholds and advanced settings</summary>
+
+Use every eligible basket, follow actual execution status and prevent duplicate submissions.
+
+![Mining configuration](docs/images/after/mining.png)
+
+</details>
+
+<details>
+<summary>Association Rules — product search, sorting, metric filters and pagination</summary>
+
+Compare directional confidence alongside support and lift. Tables support page scrolling, horizontal scrolling and keyboard access.
+
+![Searchable association rules](docs/images/after/association-rules.png)
+
+</details>
+
+<details>
+<summary>Product Layout — conceptual adjacency, zoom, pan and selected relationship details</summary>
+
+Search and filter relationships, inspect product names and metric explanations, then reset the graph view.
+
+![Product adjacency graph](docs/images/after/product-layout.png)
+![Selected graph relationship](docs/images/after/graph-detail.png)
+
+</details>
+
+<details>
+<summary>Reports — configuration, recommendation evidence and complete CSV export</summary>
+
+Review the selected dataset/run and search paginated recommendations. CSV exports contain all authorized recommendations.
+
+![Recommendation evidence report](docs/images/after/reports.png)
+
+</details>
+
+<details>
+<summary>Accounts — sign-in, signup, email verification and password recovery</summary>
+
+Supabase manages credentials and sessions. Expired links have clear guidance and a resend action.
+
+![Sign in](docs/images/after/sign-in.png)
+![Create account](docs/images/after/sign-up.png)
+![Email verification](docs/images/after/email-verification.png)
+![Resend verification](docs/images/after/resend-verification.png)
+![Forgot password](docs/images/after/forgot-password.png)
+![Reset password](docs/images/after/reset-password.png)
+
+</details>
+
+<details>
+<summary>Account menu and profile — real identity, preferences and sign-out</summary>
+
+View verification status, update your display name and request a password reset. Private results clear when accounts change.
+
+![Account menu](docs/images/after/account-menu.png)
+![Account profile](docs/images/after/account-profile.png)
+
+</details>
+
+<details>
+<summary>Previous runs — searchable, scrollable history without pasting UUIDs</summary>
+
+Filter authorized history by name, dataset, status or date; select using mouse or keyboard. Escape/outside interaction dismisses the menu.
+
+![Previous run selector](docs/images/after/run-selector.png)
+
+</details>
+
+<details>
+<summary>Responsive navigation and themes — compact sidebar and mobile reports</summary>
+
+The sidebar remembers its browser preference. Mobile navigation uses an accessible drawer. GitHub Dark is the default; an optional light theme remains available.
+
+![Collapsed sidebar](docs/images/after/sidebar-collapsed.png)
+![Mobile dashboard](docs/images/after/mobile-dashboard.png)
+![Mobile report](docs/images/after/mobile-report.png)
+![Optional light theme](docs/images/after/light-theme.png)
+
+</details>
 
 ## Verification
+
 ```bash
 cd backend
-../.venv/bin/pytest -q
+../.venv/bin/pytest -q  # Use a DISPOSABLE PostgreSQL database for both DB URL variables.
 cd ../frontend
 npm test
 npm run build
-npm audit
+npm audit --audit-level=moderate
 npx playwright install chromium
-npx playwright test
 ```
-PostgreSQL tests create a unique disposable `retail_test_*` schema using `MIGRATION_DATABASE_URL` (or DATABASE_URL for local CI), leaving application data intact. Browser verification requires both servers and the imported UCI dataset with a completed run. `backend/scripts/smoke.py` creates and verifies a new full-dataset run against localhost. Python's lock includes mlxtend's transitive scikit-learn/Matplotlib dependencies; no supervised training is performed.
 
-## Deployment and evidence
-Vercel: `frontend/` root, `npm ci`, `npm run build`, `dist/`; set `VITE_API_BASE_URL` to the HTTPS backend origin. Render: `backend/` root and single-worker Uvicorn; configure runtime database URL, operator token, exact frontend CORS origin and persistent basket storage. Supabase uses SSL and the isolated `retail` schema. See [deployment instructions](docs/deployment.md) before provisioning: measured full-data peak RSS was approximately 1.50 GiB, exceeding 512 MiB hosting. No paid plan has been selected and nothing is publicly deployed.
+Live browser checks require both servers, a verified authorized test account supplied through `E2E_EMAIL` / `E2E_PASSWORD`, the full UCI dataset and an existing completed baseline run: `cd frontend && npx playwright test`. The workflow creates one private run and respects the six-per-hour limit. Never run destructive tests on application data. For deterministic offline browser checks, first run `.venv/bin/python backend/scripts/browser_fixture.py`, then `cd frontend && npx playwright test --config playwright.platform.config.js`.
 
-[Architecture](docs/architecture.md) · [wireframes](docs/wireframes.md) · [evaluation](docs/evaluation.md) · [final report](docs/final-report.md) · [demo](docs/demo.md) · [requirement traceability](PLAN.md)
-
-The interface refresh and its verification are documented in [docs/ui-refresh.md](docs/ui-refresh.md).
+[Current evidence and remaining owner actions](docs/improvement-report.md) · [Architecture](docs/architecture.md) · [Deployment](docs/deployment.md) · [Final report](docs/final-report.md). No public deployment or production readiness certification is claimed.

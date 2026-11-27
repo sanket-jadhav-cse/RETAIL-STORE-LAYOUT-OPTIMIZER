@@ -447,33 +447,37 @@ export default function App() {
               Refresh
             </button>
           </header>
-          <section className="context-bar" aria-label="Analysis selection">
-            <label className="dataset-picker">
-              <span>
-                <Icon name="database" />
-                Dataset
-              </span>
-              <select
-                aria-label="Dataset"
-                value={datasetId}
-                onChange={(e) => chooseDataset(e.target.value)}
-              >
-                <option value="">Select a dataset</option>
-                {datasets.map((d) => (
-                  <option key={d.dataset_id} value={d.dataset_id}>
-                    {d.name || "Imported transaction dataset"} ·{" "}
-                    {d.basket_count.toLocaleString()} baskets
-                  </option>
-                ))}
-              </select>
-            </label>
-            <RunSelector
-              selectedId={runId}
-              onSelect={chooseRun}
-              datasets={datasets}
-              refresh={refresh}
-            />
-          </section>
+          {screen !== 1 && screen !== 6 && (
+            <section className="context-bar" aria-label="Analysis selection">
+              <label className="dataset-picker">
+                <span>
+                  <Icon name="database" />
+                  Dataset
+                </span>
+                <select
+                  aria-label="Dataset"
+                  value={datasetId}
+                  onChange={(e) => chooseDataset(e.target.value)}
+                >
+                  <option value="">Select a dataset</option>
+                  {datasets.map((d) => (
+                    <option key={d.dataset_id} value={d.dataset_id}>
+                      {d.name || "Imported transaction dataset"} ·{" "}
+                      {d.basket_count.toLocaleString()} baskets
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {screen >= 2 && screen <= 5 && (
+                <RunSelector
+                  selectedId={runId}
+                  onSelect={chooseRun}
+                  datasets={datasets}
+                  refresh={refresh}
+                />
+              )}
+            </section>
+          )}
           <output className="announcement sr-only">
             {feedback || (run ? `Mining status: ${run.status}` : "")}
           </output>
@@ -492,7 +496,7 @@ export default function App() {
               Online Retail, then refresh this page.
             </Notice>
           )}
-          {run && (
+          {run && screen >= 2 && screen <= 5 && (
             <div className="run-status-row">
               <Status status={run.status} />
               <span className="selected-run-name">

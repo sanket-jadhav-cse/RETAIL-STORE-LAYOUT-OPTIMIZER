@@ -1,5 +1,7 @@
 # UI refresh
 
+Historical UI-refresh record. The current GitHub Dark/account design and final screenshots supersede these earlier UI details; see [improvement-report.md](improvement-report.md).
+
 Scope: all six screens on `feat/ui-theme-refresh`, based on the verified working application on main. Baseline commit `9395438` and the existing GitHub license initialization were preserved in main (`4b5ebe7`). Repository: https://github.com/sanket-jadhav-cse/RETAIL-STORE-LAYOUT-OPTIMIZER. The existing repository is public; no website hosting was deployed.
 
 ## Implemented

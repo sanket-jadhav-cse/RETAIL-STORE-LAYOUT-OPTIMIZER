@@ -1,6 +1,8 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
+vi.mock("./config", () => ({
+  config: { supabaseUrl: "", supabasePublishableKey: "" },
+}));
 const { AuthScreen } = await import("./auth");
 afterEach(cleanup);
 it("keeps deployment instructions off the public sign-in screen and fails closed", () => {

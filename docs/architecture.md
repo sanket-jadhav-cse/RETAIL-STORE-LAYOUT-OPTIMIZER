@@ -1,111 +1,89 @@
 # Architecture
-The application is a modular monolith. Python performs every production metric calculation. The browser only formats evidence and draws the returned pairs.
 
-## High-level design
+The existing modular monolith is preserved. Python calculates production metrics; React formats persisted evidence and draws conceptual product relationships. No predictive model training or physical floor-plan optimization is implied.
+
+## Request and mining flow
+
 ```mermaid
 flowchart LR
- U[Store planner / visual merchandiser] <--> F[React / Vite / Tailwind / Axios]
- F <-->|HTTPS REST| A[FastAPI single Uvicorn worker]
- A <--> D[(Supabase PostgreSQL: retail schema)]
- A --> S[Scheduler + PostgreSQL advisory lock]
- S --> P[Bounded spawned CPU process]
- P --> M[mlxtend FP-Growth]
- P <--> D
- B[(Persistent basket artifacts)] --> P
- I[Controlled import CLI] --> B
- I --> D
+  U[Verified planner] --> F[React JavaScript dashboard]
+  F <--> S[Supabase Auth]
+  F -->|Access token| A[FastAPI]
+  A --> J[JWKS signature and current-user verification]
+  J --> O[Owner-scoped queries and transaction-local identity]
+  O <--> D[(PostgreSQL retail schema and restrictive RLS)]
+  A --> Q[Exclusive scheduler and bounded concurrency]
+  Q --> W[Spawned FP-Growth worker]
+  B[Complete content-addressed baskets] --> W
+  W -->|Atomic results and status| D
+  I[Controlled import CLI] --> B
+  I --> D
 ```
 
-## Low-level design and data flow
-```mermaid
-flowchart TD
- X[UCI CSV / XLSX] --> V[Required-column validation]
- V --> C[Sequential exclusions and quality counts]
- C --> G[Invoice grouping / product deduplication]
- G --> B[Content-addressed JSON baskets without customer IDs]
- B --> E[Sparse Boolean encoding]
- E --> F[FP-Growth itemsets]
- F --> R[mlxtend association rules]
- R --> T[Confidence / lift qualification]
- T --> P[Canonical singleton pairs and deterministic rank]
- P --> W[Atomic result transaction]
- W --> API[Paginated API / CSV]
- API --> UI[Six dashboard screens]
-```
-Every eligible invoice contributes one denominator unit. Positive quantity signifies presence rather than a weight. Missing customer IDs do not exclude invoices. No random sampling or arbitrary product truncation occurs.
+One ignored root `.env` supplies local configuration. `backend/app/config.py` owns validated server settings and engine/session creation. `frontend/env-public.js` projects only three approved public settings into Vite; automatic environment-prefix exposure is disabled. `frontend/src/config.js` is the browser configuration interface. Hosted process environment values override local files. Database/owner/service-role secrets never belong in frontend settings.
 
-## Entity relationships
+## Authentication and ownership
+
+Supabase owns passwords, email verification, recovery, refresh tokens and sessions. The frontend restores sessions through the SDK, protects application entry, cancels requests on identity changes and remounts private state across accounts. No shared operator password or custom password table exists. Theme/sidebar preferences are non-sensitive browser preferences.
+
+FastAPI accepts verified ES256/RS256 access tokens with the configured issuer, `authenticated` audience/role, expiration, issued-at and UUID subject. It also checks the current verified user with Auth's user endpoint. JWKS keys are cached for rotation. User IDs from request bodies/query parameters never authorize a record. Access-token validity after logout is subject to Supabase JWT expiry; immediate invalidation of every issued JWT is not claimed.
+
+Datasets are shared read-only or private to an owner. Every run/status/name/history/itemset/rule/graph/report/CSV lookup checks the verified owner. Legacy runs with NULL owners remain restricted to maintenance access; no new signup inherits them. RLS is defense in depth: restrictive ownership policies intersect runtime grants, while SQLAlchemy applies `retail.user_id` and `retail.maintenance` with transaction-local `set_config`. Commit/rollback resets pooled identity; the listener reapplies it on each new transaction. The controlled CLI/worker explicitly uses maintenance sessions. A fixed-scope security-definer boolean function reports global mining occupancy without exposing other users' records.
+
+The `retail` schema stays outside Supabase's exposed Data API schemas. The runtime role has SELECT/INSERT/UPDATE only, no owner/migration administration. Migration credentials are used only on a trusted machine. Auth users remain in Supabase Auth; no duplicate accounts table was introduced.
+
+## Data model and migrations
+
 ```mermaid
 erDiagram
- DATASET ||--o{ PRODUCT : contains
- DATASET ||--o{ MINING_RUN : analyzed_by
- MINING_RUN ||--o{ ASSOCIATION_RULE : generates
- MINING_RUN ||--o{ ADJACENCY : generates
- PRODUCT ||--o{ ADJACENCY : endpoint
- DATASET {
- uuid dataset_id PK
- string checksum UK
- string source
- string version
- int basket_count
- jsonb summary
- timestamp imported_at
- }
- PRODUCT {
- uuid dataset_id PK,FK
- string product_code PK
- string description
- }
- MINING_RUN {
- uuid run_id PK
- uuid dataset_id FK
- float min_support
- float min_confidence
- float min_lift
- int max_itemset_size
- string status
- jsonb execution
- jsonb itemsets
- }
- ASSOCIATION_RULE {
- uuid rule_id PK
- uuid run_id FK
- jsonb antecedent
- jsonb consequent
- float support
- float confidence
- float lift
- }
- ADJACENCY {
- uuid adjacency_id PK
- uuid run_id FK
- uuid dataset_id FK
- string product_a FK
- string product_b FK
- float support
- float confidence_a_b
- float confidence_b_a
- float lift
- int rank
- string rationale
- }
+  DATASET ||--o{ PRODUCT : contains
+  DATASET ||--o{ MINING_RUN : analyzed_by
+  MINING_RUN ||--o{ ASSOCIATION_RULE : generates
+  MINING_RUN ||--o{ ADJACENCY : generates
+  DATASET {
+    uuid dataset_id PK
+    string checksum UK
+    uuid owner_id "nullable legacy/private owner"
+    boolean is_shared
+    string name
+    string description
+    string source_url
+    date transaction_start
+    date transaction_end
+    jsonb summary
+  }
+  MINING_RUN {
+    uuid run_id PK
+    uuid dataset_id FK
+    uuid owner_id "nullable restricted legacy"
+    string name
+    string status
+    timestamp created_at
+    jsonb execution
+    jsonb itemsets
+  }
 ```
-Adjacency uses composite foreign keys to both product endpoints and the run's dataset. `product_a < product_b` and unique run/pair constraints prevent self-pairs and reverse duplicates. Timestamps are timezone-aware UTC. Results, metadata and status completion commit together. Itemsets are bounded to 100,000 records and stored as JSONB; raw source rows are not persisted.
 
-## API and execution flow
-POST `/api/v1/runs` validates the operator bearer token, dataset artifact and thresholds, takes a transaction advisory lock, checks active runs and commits Queued. The scheduler commits Running, spawns one child, and monitors a wall-clock limit. Child address-space limit defaults to 2 GiB. On success all results commit atomically with Completed; exceptions/timeouts become Failed with safe text. Reads return 409 until completed. Startup marks interrupted Queued/Running jobs Failed rather than claiming durable retry. A session advisory lock rejects a second application worker. Shutdown explicitly releases it before connection pooling.
+Products use a dataset/code composite key. Adjacency has composite foreign keys to both product endpoints and the run's dataset, canonical `product_a < product_b` ordering and a unique run/pair constraint. UTC timestamps, finite validated thresholds, atomic completion and bounded itemset responses preserve integrity. Raw source/customer rows are not stored in PostgreSQL.
 
-Routes: health; datasets; dataset summary; create run; run status; rules; adjacencies; report; CSV export; paginated itemsets. Unknown UUIDs return 404, invalid input 422, unauthorized mining 401, busy/not-ready 409, database failures 503. Rule search matches names/codes; sort is allowlisted; page size is at most 100. Reports and graph consume the same persisted adjacency rows. CSV neutralizes formula prefixes.
+Migrations are additive: 001 original schema; 002 ownership/RLS; 003 provenance/date metadata; 004 run names; 005 partial owner/creation/run history index. Each was exercised in a unique disposable schema before applying to the existing application schema. No records were dropped or reassigned.
 
-## Responsibilities and boundaries
-- `config.py`: environment settings, PostgreSQL engine/session; Supabase requires sslmode.
-- `models.py`: integrity constraints and ORM only.
-- `schemas.py`: request validation and response contracts.
-- `mining/preprocessing.py`: deterministic cleaning, names and sparse presence matrix.
-- `mining/pipeline.py`: FP-Growth, rule filtering and pair ranking, independent of HTTP/database.
-- `worker.py`: single-process scheduling, restart recovery and atomic persistence.
-- `main.py`: HTTP routing, auth, pagination, serialization and CORS.
-- `scripts/`: owner-controlled acquisition, import, credentials, role setup and smoke verification.
-- Frontend `api.js`: Axios configuration and CSV download; `App.jsx`: navigation/API state and polling; `Overview.jsx`: dashboard/quality; `Results.jsx`: dataset/mining/results screens; `Graph.jsx`: graph/evidence; `ui.jsx`: shared controls; `theme.js`: appearance; `Icon.jsx`: SVG icon set. See ui-refresh.md for theme/accessibility verification.
+## Mining and recovery
 
-Private `retail` schema is outside default Supabase Data API schemas. Public and API roles get no grants; RLS policies grant the scoped runtime role. Do not add `retail` to exposed schemas. Runtime cannot create/drop tables or administer the database. Read endpoints expose product-level aggregates, never customer identifiers. Migration credentials are never needed by the web process on Render.
+The importer validates source columns, applies deterministic exclusions, groups invoice-level baskets and writes atomic content-addressed artifacts. Verified source checksum identifies UCI; other datasets keep their own provenance. Missing-artifact repair preserves already verified custom metadata and ownership. Every eligible invoice remains in the denominator; quantities signify presence, not weight. No sampling or product truncation was added.
+
+The existing sparse Boolean FP-Growth pipeline remains in place. Released mlxtend 0.25.0 removes unnecessary upstream null-handling allocations; compatible pandas/NumPy upgrades preserve the complete result digest. Association metrics, canonical pairs and deterministic ranking are unchanged.
+
+POST `/api/v1/runs` validates dataset/artifact/configuration and the account's hourly limit, serializes simultaneous submissions with a transaction advisory lock and permits one active job globally. One scheduler holds a session advisory lock. Its child is bounded by address space and wall time. Results and Completed status commit atomically; failures/timeouts retain safe Failed records. Restart or connection recovery marks interrupted jobs Failed only after exclusive lock acquisition. Recovery stops/reaps a child and reconnects with interruptible exponential backoff capped by configuration. It never silently reruns an interrupted analysis.
+
+The default SQLAlchemy pool is five connections and zero overflow **per process**, with acquisition/connect/statement/lock limits, recycling and health checks. The scheduler consumes a parent pool connection; the mining child uses its own process-local engine. Size hosting connection budgets accordingly.
+
+## API and client responsibilities
+
+Existing `/api/v1` routes remain: health; datasets; dataset summary; create/status runs; rules; adjacencies; report; CSV; itemsets. Added GET runs supports authorized search, dataset/status/date filters, bounded pagination and sort; PATCH run renames an owned run; GET account returns verified identity. Page size is bounded to 100. Authentication is required on account/data routes; health contains only availability. Common responses: 401 invalid/missing session; 403 unverified identity; 404 unavailable/unauthorized record; 409 busy/not-ready/artifact; 422 invalid input; 429 account submission limit; 503 database/Auth/scheduler outage.
+
+Catalog reads avoid N+1 run lookups. Status/history omit heavy itemsets. Product search runs in SQL and only required labels are fetched for returned rows; CSV intentionally retrieves all authorized recommendation rows and neutralizes spreadsheet formulas. No engine is created per request.
+
+`App.jsx` coordinates navigation, catalog/run selection and cancellable results; `auth.jsx` owns account sessions/forms; `Account.jsx`, `Sidebar.jsx` and Radix overlays manage accessible account/navigation UI; `RunSelector.jsx` owns searchable history; `Overview.jsx` and `Results.jsx` render evidence; `Graph.jsx` preserves SVG zoom/pan/details; `ui.jsx` and CSS/Tailwind tokens own shared styling. GitHub Dark is default. Search is debounced, stale requests abort, filter/page changes are atomic and terminal/off-screen polling stops. Overview retains inline history; run popovers/details appear on analysis pages only. Tables allow vertical scroll chaining and horizontal keyboard/wheel access.
+
+See [improvement evidence](improvement-report.md) for measurements, test boundaries and production limitations.

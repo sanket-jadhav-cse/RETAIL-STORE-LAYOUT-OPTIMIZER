@@ -1,3 +1,22 @@
+# Current completion ledger — 2026-11-27
+
+This ledger supersedes the historical operator/public-read notes below. Preserve existing source/data/history; no deployment or automatic merge is authorized. The owner authorized focused branches, one-line commits and PR publication.
+
+| Priority/work | Status | Acceptance and affected files | Evidence / remaining step |
+|---|---|---|---|
+| P0 Baseline/PRD/reference review | Completed | Existing source, migrations, docs, 12-page PRD, six real screens, before metrics | Original captures/read plans/build and reference review retained |
+| P0 Accounts/ownership | Completed | Supabase SDK + verified JWT/current user, owner-scoped data/exports, NULL legacy restriction; Auth/API/models/migrations | Live login/refresh/logout and isolated two-identity API/RLS tests pass |
+| P1 Data/run metadata | Completed | Checksum-verified UCI identity, source-specific imports and repair; validated persisted run names/search/rename | Full workbook counts, migration/import/history regressions pass |
+| P1 Six-screen UI | Completed | Central GitHub Dark tokens, responsive sidebar/drawer, overlays, contextual run controls, rules/graph/reports, scrolling | 35 frontend + 4 offline browser scenarios; six widths/dark/light/axe, live responsive/zoom checks |
+| P2 Query/resource work | Completed | Set-based catalog, deferred itemsets, bounded pools/pages; upstream memory allocation and reconnect cleanup | 39 backend tests, full-data digest/persistence, repeated RSS/query/HTTP/browser measurements; mixed latency findings recorded |
+| P2 Final QA | Completed | Production build, audits, lint, actual startup/TLS and complete authorized workflow | 4 live scenarios have passed; initial 429/CSV/disconnect failures remain documented |
+| P2 Evidence/docs/integration preparation | Completed | README embedded pictures, before/after report, architecture/deployment/evaluation/final report, clean main integration PR | 26 curated screenshots, embedded README gallery, reports, numeric evidence and link/secret/diff checks pass; owner review remains |
+| P0 Hosted email/second live account | Blocked | Owner URL allowlist confirmation; live reset-email round trip and second verified account | Forms/SDK and isolated two-identity coverage pass; external checks not certified |
+| P0 Credential rotation / CI | Blocked | Owner rotates disclosed credentials and resolves GitHub billing; fresh remote checks | No private keys in frontend/build/report; no unauthorized resets |
+| Deployment/store validation | Pending | Owner-approved HTTPS hosting, persistent artifacts, target-host capacity and store review | No publication/deployment performed; not a production-readiness claim |
+
+Historical planner and verification chronology follows for traceability.
+
 # Retail Store Layout Optimizer
 Sanket Jadhav · 240410700193 · Semester 5
 
@@ -101,3 +120,11 @@ Expired email callback regression reproduced (missing error guidance). Fixed wit
 Live browser verification update: all three authenticated theme/responsive/zoom tests pass against Supabase. Full six-screen workflow reproduced a stale report-heading assertion (updated to the current Reports heading), then a transient CSV timeout and a scheduler becoming unavailable after connection interruption. These failures remain recorded; the workflow is not marked passed. Authenticated smoke verifies account, catalog, history, all five result routes and full baseline counts without overwriting historical evaluation data. New owner requests: one root environment file and fewer run controls; table wheel scrolling must be repaired with a browser regression.
 
 Scheduler reconnect fix: Completed in isolated verification. Terminating the scheduler's actual disposable PostgreSQL session reproduced permanent mining unavailability. Recovery now stops/reaps any child, releases the failed connection, retries with bounded exponential backoff, and reacquires the exclusive advisory lock before resetting interrupted jobs or accepting new work. Contention and interruptible-shutdown regressions pass; full backend suite: 37 passed. This does not retry a failed mining run automatically. Table wheel regression separately reproduces the user's hover/scroll failure before its CSS fix.
+
+Table scrolling: Completed and verified. The regression failed with the pointer over a dataset/rules/report table and passes after enabling vertical scroll chaining. Horizontal wheel and keyboard access remain verified on mobile. Inline Overview history also allows scrolling back to the surrounding page; modal/popover and drawer scroll boundaries retain appropriate containment.
+
+Central environment: Completed and verified locally. Root `.env` is the only active local settings file; old files are archived in ignored private backups. Vite projects an exact public allowlist, rejects privileged keys and disables automatic prefix exposure; private database/owner/password/operator values were checked absent from the built JS. Backend, migration and role/setup scripts use the root settings; no project host/ID is embedded in setup code. Pool/reconnect bounds are configurable and validated. 39 backend / 34 frontend tests, build, live browser sign-in/dataset access and PostgreSQL client TLS check pass. Hosting Auth env declarations and documented Vercel SPA rewrite prepared; no deployment performed.
+
+Contextual selection: Completed and verified. Overview retains inline recent history and its own metrics/status; the duplicated header selector/status strip appears only on Mining/Rules/Layout/Reports. Datasets uses its searchable catalog and Account has no analysis controls. Regression fails before and passes after; 35 frontend tests, configured build and all 4 offline Chromium workflows pass. Expanded screenshot evidence now includes profile, graph details, verification/resend, forgot/reset and mobile reports; all use an explicitly isolated test identity with actual exported dataset aggregates.
+
+Live verification completed: all 3 authenticated theme/responsive/zoom browser checks pass; the full mining/rules/graph/report/CSV/session/logout workflow passes separately (48.9 s) after the hourly submission window reopened. The rate-limit rejection was retained as evidence and was not bypassed. Live history selection explicitly chooses a completed authorized baseline run rather than assuming the newest run uses baseline thresholds. Final test totals: 39 backend, 35 frontend, 4 offline browser and 4 live browser checks passed. npm audit/pip-audit report zero known advisories; pip check, root-scoped correctness/import lint and production build pass. Remaining work: finalize illustrated documentation and reconcile all verified follow-ups into a reviewable main integration PR; external email-redirect/reset/second-account/CI/hosting checks remain separately blocked/pending.
