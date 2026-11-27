@@ -1,31 +1,16 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-const names = [
-  "Dashboard",
-  "Dataset",
-  "Configure mining",
-  "Association rules",
-  "Layout visualization",
-  "Recommendation report",
-];
-async function selectPage(page, name) {
-  const button = page.getByRole("button", { name, exact: true });
-  if (!(await button.isVisible()))
-    await page.getByRole("button", { name: "Open navigation" }).click();
-  await button.click();
-}
-async function noOverflow(page) {
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-    ),
-  ).toBe(true);
-}
+import {
+  pages as names,
+  navigate as selectPage,
+  noOverflow,
+  signIn,
+} from "./auth-helpers";
 test("light and dark themes persist and all screens pass automated accessibility checks", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await signIn(page);
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await expect(page.getByText("358", { exact: true })).toBeVisible();
   for (const theme of ["light", "dark"]) {
@@ -35,7 +20,7 @@ test("light and dark themes persist and all screens pass automated accessibility
         .click();
     for (const name of names) {
       await selectPage(page, name);
-      if (name !== "Dashboard") await expect(page.locator("h1")).toBeFocused();
+      if (name !== "Overview") await expect(page.locator("h1")).toBeFocused();
       await expect(
         page.getByText("Loading data…", { exact: true }),
       ).toHaveCount(0);
@@ -50,14 +35,15 @@ test("light and dark themes persist and all screens pass automated accessibility
           nodes: v.nodes.map((n) => n.target),
         })),
       ).toEqual([]);
-      if (name === "Dashboard") {
+      if (name === "Overview") {
         await expect(page.locator(".connection-card")).toHaveCount(3);
         await page.screenshot({
           path: `test-results/dashboard-${theme}.png`,
           fullPage: true,
+          animations: "disabled",
         });
       }
-      if (name === "Layout visualization") {
+      if (name === "Product Layout") {
         await page.getByLabel("Inspect relationship").selectOption("1");
         await expect(page.getByText(/Co-purchased in/)).toBeVisible();
         const edge = page.getByRole("button", {
@@ -74,6 +60,7 @@ test("light and dark themes persist and all screens pass automated accessibility
         await page.screenshot({
           path: `test-results/graph-${theme}.png`,
           fullPage: true,
+          animations: "disabled",
         });
       }
     }
@@ -86,7 +73,7 @@ test("320px layouts, mobile navigation and reduced motion preserve all six scree
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto("/");
+  await signIn(page);
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await expect(page.getByText("358", { exact: true })).toBeVisible();
   for (const name of names) {
@@ -102,9 +89,10 @@ test("320px layouts, mobile navigation and reduced motion preserve all six scree
   await page.screenshot({
     path: "test-results/mobile-report.png",
     fullPage: true,
+    animations: "disabled",
   });
   await page.setViewportSize({ width: 720, height: 900 });
-  await selectPage(page, "Dashboard");
+  await selectPage(page, "Overview");
   await noOverflow(page);
   await page.evaluate(() => (document.documentElement.dir = "rtl"));
   await noOverflow(page);
@@ -112,11 +100,11 @@ test("320px layouts, mobile navigation and reduced motion preserve all six scree
 
 test("text zoom keeps desktop controls reachable", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/");
+  await signIn(page);
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
   await noOverflow(page);
-  await selectPage(page, "Configure mining");
+  await selectPage(page, "Mining");
   await expect(
     page.getByLabel("Minimum support", { exact: true }),
   ).toBeVisible();
