@@ -1,12 +1,36 @@
-from datetime import datetime
+import unicodedata
+from datetime import date, datetime
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class RunName(BaseModel):
+    name: Annotated[str, Field(min_length=1, max_length=120)]
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value):
+        value = value.strip()
+        if not value or any(
+            unicodedata.category(c).startswith("C") or c in "<>" for c in value
+        ):
+            raise ValueError(
+                "Use a printable run name without markup, up to 120 characters"
+            )
+        return value
 
 
 class RunInput(BaseModel):
     dataset_id: UUID
+    name: Annotated[str | None, Field(max_length=120)] = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value):
+        return RunName(name=value).name if value is not None else None
+
     min_support: Annotated[float, Field(gt=0, le=1, allow_inf_nan=False)] = 0.02
     min_confidence: Annotated[float, Field(gt=0, le=1, allow_inf_nan=False)] = 0.5
     min_lift: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 1
@@ -16,6 +40,14 @@ class RunInput(BaseModel):
 class DatasetOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     dataset_id: UUID
+    name: str
+    description: str | None
+    source_organization: str | None
+    source_url: str | None
+    doi: str | None
+    transaction_start: date | None
+    transaction_end: date | None
+    processing_status: str
     source: str
     version: str
     basket_count: int
@@ -25,6 +57,7 @@ class DatasetOut(BaseModel):
 
 
 class RunOut(RunInput):
+    name: str
     model_config = ConfigDict(from_attributes=True)
     run_id: UUID
     status: str
@@ -32,3 +65,14 @@ class RunOut(RunInput):
     completed_at: datetime | None
     error: str | None
     execution: dict
+
+
+class RunHistoryItem(RunOut):
+    dataset_name: str
+
+
+class RunHistory(BaseModel):
+    items: list[RunHistoryItem]
+    total: int
+    page: int
+    page_size: int

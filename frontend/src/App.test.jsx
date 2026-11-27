@@ -29,6 +29,7 @@ const dataset = {
 };
 beforeEach(() => {
   window.localStorage.clear();
+  dataset.latest_run_id = null;
   api.get.mockReset();
   api.post.mockReset();
   api.get.mockResolvedValue({ data: [dataset] });
@@ -39,11 +40,11 @@ it("loads actual dashboard values and navigates all screens", async () => {
   await screen.findByText("100");
   expect(screen.getByText("3")).toBeInTheDocument();
   for (const name of [
-    "Dataset",
-    "Configure mining",
-    "Association rules",
-    "Layout visualization",
-    "Recommendation report",
+    "Datasets",
+    "Mining",
+    "Association Rules",
+    "Product Layout",
+    "Reports",
   ]) {
     fireEvent.click(screen.getByRole("button", { name, exact: true }));
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
@@ -64,9 +65,9 @@ it("shows empty, loading and failure states", async () => {
   cleanup();
   api.get.mockRejectedValue(new Error("offline"));
   render(<App />);
-  await screen.findByRole("alert");
+  await screen.findByText("We couldn’t complete that request");
 });
-it("submits thresholds with a memory-only operator token", async () => {
+it("submits thresholds through the authenticated API client", async () => {
   api.post.mockResolvedValue({
     data: {
       run_id: RUN_ID,
@@ -77,28 +78,22 @@ it("submits thresholds with a memory-only operator token", async () => {
   });
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(
-    screen.getByRole("button", { name: "Configure mining", exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
   expect(screen.getByLabelText("Minimum support")).toHaveAttribute(
     "min",
     "0.0001",
   );
-  fireEvent.change(screen.getByLabelText("Operator token"), {
-    target: { value: "test-token" },
-  });
   fireEvent.click(screen.getByRole("button", { name: "Run FP-Growth" }));
   await waitFor(() =>
     expect(api.post).toHaveBeenCalledWith(
       "/runs",
       expect.objectContaining({ min_support: 0.02, dataset_id: "d1" }),
-      { headers: { Authorization: "Bearer test-token" } },
     ),
   );
   expect(window.localStorage.getItem("token")).toBeNull();
 });
 it("renders rules and report responses", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -136,14 +131,12 @@ it("renders rules and report responses", async () => {
     }),
   );
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   fireEvent.click(
-    screen.getByRole("button", { name: "Association rules", exact: true }),
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
-  fireEvent.click(
-    screen.getByRole("button", { name: "Recommendation report", exact: true }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Reports", exact: true }));
   await screen.findByText("Review feasibility");
 });
 it("inspects graph evidence and resets zoom", () => {
@@ -172,7 +165,7 @@ it("inspects graph evidence and resets zoom", () => {
 });
 
 it("clears old run statistics when selecting another dataset", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -206,13 +199,13 @@ it("clears old run statistics when selecting another dataset", async () => {
 it("toggles and persists the selected color theme", async () => {
   render(<App />);
   await screen.findByText("100");
-  fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
   expect(document.documentElement).toHaveAttribute("data-theme", "dark");
-  expect(window.localStorage.getItem("retailTheme")).toBe("dark");
   fireEvent.click(
     screen.getByRole("button", { name: "Switch to light theme" }),
   );
   expect(window.localStorage.getItem("retailTheme")).toBe("light");
+  fireEvent.click(screen.getByRole("button", { name: "Switch to dark theme" }));
+  expect(window.localStorage.getItem("retailTheme")).toBe("dark");
 });
 it("supports Space on graph relationships and provides button alternatives to dragging", () => {
   render(
@@ -242,7 +235,7 @@ it("supports Space on graph relationships and provides button alternatives to dr
 });
 
 it("keeps the current result table when its active navigation item is selected again", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data:
@@ -275,9 +268,9 @@ it("keeps the current result table when its active navigation item is selected a
     }),
   );
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   const button = screen.getByRole("button", {
-    name: "Association rules",
+    name: "Association Rules",
     exact: true,
   });
   fireEvent.click(button);
@@ -287,7 +280,7 @@ it("keeps the current result table when its active navigation item is selected a
 });
 
 it("debounces search and retains the table while the filtered request is pending", async () => {
-  window.localStorage.setItem("retailRun", RUN_ID);
+  dataset.latest_run_id = RUN_ID;
   let finishSearch;
   const rule = {
     rule_id: "1",
@@ -321,9 +314,9 @@ it("debounces search and retains the table while the filtered request is pending
     });
   });
   render(<App />);
-  await screen.findByText(new RegExp(`Run ${RUN_ID}`));
+  await screen.findByText("Selected analysis");
   fireEvent.click(
-    screen.getByRole("button", { name: "Association rules", exact: true }),
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
   );
   await screen.findByText("Apples");
   fireEvent.change(screen.getByLabelText("Search products"), {
@@ -346,8 +339,111 @@ it("debounces search and retains the table while the filtered request is pending
 });
 
 it("handles a malformed cached run ID without making a request outside the run API", async () => {
-  window.localStorage.setItem("retailRun", "../../datasets");
+  dataset.latest_run_id = "../../datasets";
   render(<App />);
-  await screen.findByRole("alert");
-  expect(api.get.mock.calls.map(([path]) => path)).toEqual(["/datasets"]);
+  await screen.findByText("We couldn’t complete that request");
+  expect(api.get.mock.calls.map(([path]) => path).sort()).toEqual([
+    "/datasets",
+    "/runs",
+  ]);
+});
+
+it("searches source-specific dataset names and selects the matching catalog entry", async () => {
+  api.get.mockResolvedValue({
+    data: [
+      { ...dataset, name: "UCI Online Retail Dataset" },
+      {
+        ...dataset,
+        dataset_id: "d2",
+        name: "North Shop Purchases",
+        basket_count: 7,
+      },
+    ],
+  });
+  render(<App />);
+  await screen.findByText("100");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Datasets", exact: true }),
+  );
+  fireEvent.change(screen.getByLabelText("Search datasets"), {
+    target: { value: "North" },
+  });
+  const option = screen.getByRole("button", { name: /North Shop Purchases/ });
+  fireEvent.click(option);
+  expect(screen.getByLabelText("Dataset")).toHaveValue("d2");
+  expect(option).toHaveAttribute("aria-pressed", "true");
+});
+
+it("keeps the loaded rule table when selecting the same run from history", async () => {
+  dataset.latest_run_id = RUN_ID;
+  const run = {
+    run_id: RUN_ID,
+    dataset_id: "d1",
+    status: "Completed",
+    execution: {},
+    name: "Baseline Analysis",
+    created_at: "2026-11-26T00:00:00Z",
+  };
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path === "/runs"
+            ? { items: [{ ...run, dataset_name: "UCI" }], total: 1 }
+            : path.endsWith("/rules")
+              ? {
+                  items: [
+                    {
+                      rule_id: "1",
+                      antecedent: ["A"],
+                      consequent: ["B"],
+                      antecedent_names: ["Apples"],
+                      consequent_names: ["Bread"],
+                      support: 0.2,
+                      confidence: 0.5,
+                      lift: 1.5,
+                    },
+                  ],
+                  total: 1,
+                }
+              : path.endsWith("/adjacencies")
+                ? { items: [], total: 0 }
+                : run,
+    }),
+  );
+  render(<App />);
+  await screen.findByText("Baseline Analysis", {
+    selector: ".selected-run-name",
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
+  );
+  await screen.findByText("Apples");
+  fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
+  fireEvent.click(
+    await screen.findByRole("option", { name: /Baseline Analysis/ }),
+  );
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("combobox", { name: "Search previous runs" }),
+    ).not.toBeInTheDocument(),
+  );
+  expect(screen.getByText("Apples")).toBeInTheDocument();
+});
+
+it("collapses the desktop sidebar and restores its preference", async () => {
+  render(<App />);
+  await screen.findByText("100");
+  fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+  expect(localStorage.getItem("retailSidebarCollapsed")).toBe("true");
+  expect(
+    screen.getByRole("button", { name: "Overview", exact: true }),
+  ).toHaveAttribute("title", "Overview");
+  cleanup();
+  render(<App />);
+  await screen.findByText("100");
+  expect(
+    screen.getByRole("button", { name: "Expand sidebar" }),
+  ).toHaveAttribute("aria-expanded", "false");
 });

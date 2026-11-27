@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -29,6 +30,18 @@ class Dataset(Base):
     dataset_id: Mapped[uuid.UUID] = mapped_column(
         UUID, primary_key=True, default=uuid.uuid4
     )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
+    is_shared: Mapped[bool] = mapped_column(default=False)
+    name: Mapped[str] = mapped_column(
+        String(200), default="Imported transaction dataset"
+    )
+    description: Mapped[str | None] = mapped_column(String(1000))
+    source_organization: Mapped[str | None] = mapped_column(String(200))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    doi: Mapped[str | None] = mapped_column(String(200))
+    transaction_start: Mapped[date | None] = mapped_column(Date)
+    transaction_end: Mapped[date | None] = mapped_column(Date)
+    processing_status: Mapped[str] = mapped_column(String(30), default="Ready")
     source: Mapped[str] = mapped_column(String)
     version: Mapped[str] = mapped_column(String)
     checksum: Mapped[str] = mapped_column(String, unique=True)
@@ -55,6 +68,9 @@ class MiningRun(Base):
         CheckConstraint("min_support > 0 AND min_support <= 1"),
         CheckConstraint("min_confidence > 0 AND min_confidence <= 1"),
         CheckConstraint("min_lift >= 0"),
+        CheckConstraint(
+            "char_length(trim(name)) BETWEEN 1 AND 120", name="run_name_length"
+        ),
         {"schema": "retail"},
     )
     run_id: Mapped[uuid.UUID] = mapped_column(
@@ -63,6 +79,8 @@ class MiningRun(Base):
     dataset_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("retail.datasets.dataset_id"), index=True
     )
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
+    name: Mapped[str] = mapped_column(String(120), default="Market Basket Analysis")
     min_support: Mapped[float] = mapped_column(Float)
     min_confidence: Mapped[float] = mapped_column(Float)
     min_lift: Mapped[float] = mapped_column(Float)

@@ -2,19 +2,23 @@ import csv
 import io
 import secrets
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
+from app.auth import current_user
 from app.config import Session, engine, settings
 from app.models import Adjacency, AssociationRule, Dataset, MiningRun, Product
-from app.schemas import DatasetOut, RunInput, RunOut
+from app.schemas import DatasetOut, RunHistory, RunInput, RunName, RunOut
 from app.worker import LOCK_ID, Runner
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, select, text
+from pydantic import AwareDatetime
+from sqlalchemy import String, cast, func, or_, select, text
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import defer
 
 runner = Runner()
 
@@ -31,7 +35,7 @@ app = FastAPI(title="Retail Store Layout Optimizer", version="1.0.0", lifespan=l
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_allowed_origins.split(","),
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -43,8 +47,8 @@ async def database_error(request: Request, exc):
     )
 
 
-def db():
-    with Session() as session:
+def db(user=Depends(current_user)):
+    with Session(info={"user_id": str(user.user_id), "identity": user}) as session:
         yield session
 
 
@@ -54,7 +58,17 @@ SIZE = Annotated[int, Query(ge=1, le=100)]
 
 
 def get(session, model, identifier):
-    value = session.get(model, identifier)
+    query = select(model)
+    if model is MiningRun:
+        query = query.where(
+            model.owner_id == session.info["user_id"], model.run_id == identifier
+        )
+    elif model is Dataset:
+        query = query.where(
+            model.dataset_id == identifier,
+            (model.is_shared.is_(True) | (model.owner_id == session.info["user_id"])),
+        )
+    value = session.scalar(query)
     if value is None:
         raise HTTPException(404, "Resource not found")
     return value
@@ -75,6 +89,10 @@ def operator(authorization: Annotated[str | None, Header()] = None):
         raise HTTPException(
             401, "Operator token required", headers={"WWW-Authenticate": "Bearer"}
         )
+
+
+def mining_busy(session):
+    return session.scalar(select(func.retail.mining_busy()))
 
 
 def names(session, dataset_id):
@@ -109,20 +127,29 @@ def pair_dict(row, labels):
 
 
 @app.get("/api/v1/health")
-def health(session: DB):
-    session.execute(text("SELECT 1"))
+def health():
+    with Session() as session:
+        session.execute(text("SELECT 1"))
     return {"status": "ok", "mining_available": runner.ready}
 
 
 @app.get("/api/v1/datasets", response_model=list[DatasetOut])
 def datasets(session: DB):
     rows = session.scalars(
-        select(Dataset).order_by(Dataset.imported_at.desc()).limit(100)
+        select(Dataset)
+        .where(
+            Dataset.is_shared.is_(True) | (Dataset.owner_id == session.info["user_id"])
+        )
+        .order_by(Dataset.imported_at.desc())
+        .limit(100)
     ).all()
     for row in rows:
         row.latest_run_id = session.scalar(
             select(MiningRun.run_id)
-            .where(MiningRun.dataset_id == row.dataset_id)
+            .where(
+                MiningRun.dataset_id == row.dataset_id,
+                MiningRun.owner_id == session.info["user_id"],
+            )
             .order_by(MiningRun.created_at.desc())
             .limit(1)
         )
@@ -138,7 +165,6 @@ def summary(id: UUID, session: DB):
     "/api/v1/runs",
     response_model=RunOut,
     status_code=202,
-    dependencies=[Depends(operator)],
 )
 def create_run(body: RunInput, session: DB):
     if not runner.ready:
@@ -150,15 +176,102 @@ def create_run(body: RunInput, session: DB):
         )
     # Transaction advisory lock serializes simultaneous submissions across connections.
     session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": LOCK_ID + 1})
-    active = session.scalar(
-        select(MiningRun.run_id)
-        .where(MiningRun.status.in_(["Queued", "Running"]))
-        .limit(1)
-    )
+    active = mining_busy(session)
     if active:
         raise HTTPException(409, "A mining run is already queued or running")
-    run = MiningRun(**body.model_dump())
+    recent = session.scalar(
+        select(func.count())
+        .select_from(MiningRun)
+        .where(
+            MiningRun.owner_id == session.info["user_id"],
+            MiningRun.created_at >= func.now() - text("INTERVAL '1 hour'"),
+        )
+    )
+    if recent >= settings.mining_runs_per_hour:
+        raise HTTPException(
+            429,
+            "Hourly mining limit reached; try again later",
+            headers={"Retry-After": "3600"},
+        )
+    values = body.model_dump()
+    values["name"] = (
+        body.name
+        or (
+            f"Market Basket Analysis · {dataset.name[:40]} · "
+            f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC · s={body.min_support:g} c={body.min_confidence:g}"
+        )[:120]
+    )
+    run = MiningRun(**values, owner_id=session.info["user_id"])
     session.add(run)
+    session.commit()
+    return run
+
+
+@app.get("/api/v1/runs", response_model=RunHistory)
+def run_history(
+    session: DB,
+    page: PAGE = 1,
+    page_size: SIZE = 20,
+    search: Annotated[str, Query(max_length=120)] = "",
+    dataset_id: UUID | None = None,
+    status: Annotated[
+        str | None, Query(pattern="^(Queued|Running|Completed|Failed)$")
+    ] = None,
+    created_from: AwareDatetime | None = None,
+    created_before: AwareDatetime | None = None,
+):
+    if created_from and created_before and created_from >= created_before:
+        raise HTTPException(422, "Creation date range is invalid")
+    query = (
+        select(MiningRun, Dataset.name.label("dataset_name"))
+        .join(Dataset)
+        .where(
+            MiningRun.owner_id == session.info["user_id"],
+            Dataset.is_shared.is_(True) | (Dataset.owner_id == session.info["user_id"]),
+        )
+    )
+    if dataset_id:
+        query = query.where(MiningRun.dataset_id == dataset_id)
+    if status:
+        query = query.where(MiningRun.status == status)
+    if created_from:
+        query = query.where(MiningRun.created_at >= created_from)
+    if created_before:
+        query = query.where(MiningRun.created_at < created_before)
+    if search.strip():
+        term = search.strip()
+        filters = [
+            MiningRun.name.icontains(term, autoescape=True),
+            Dataset.name.icontains(term, autoescape=True),
+            cast(MiningRun.created_at, String).icontains(term, autoescape=True),
+        ]
+        try:
+            filters.append(MiningRun.run_id == UUID(term))
+        except ValueError:
+            pass
+        query = query.where(or_(*filters))
+    total = session.scalar(select(func.count()).select_from(query.subquery()))
+    rows = session.execute(
+        query.options(defer(MiningRun.itemsets))
+        .order_by(MiningRun.created_at.desc(), MiningRun.run_id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    ).all()
+    return {
+        "items": [
+            {**RunOut.model_validate(run).model_dump(), "dataset_name": dataset_name}
+            for run, dataset_name in rows
+        ],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+@app.patch("/api/v1/runs/{id}", response_model=RunOut)
+def rename_run(id: UUID, body: RunName, session: DB):
+    run = get(session, MiningRun, id)
+    run.name = body.name
     session.commit()
     return run
 
@@ -187,11 +300,16 @@ def rules(
     search: Annotated[str, Query(max_length=100)] = "",
     min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
     sort: Annotated[str, Query(pattern="^(lift|support|confidence)$")] = "lift",
+    min_support: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
 ):
     run = completed(session, id)
     labels = names(session, run.dataset_id)
     query = select(AssociationRule).where(
-        AssociationRule.run_id == id, AssociationRule.lift >= min_lift
+        AssociationRule.run_id == id,
+        AssociationRule.lift >= min_lift,
+        AssociationRule.support >= min_support,
+        AssociationRule.confidence >= min_confidence,
     )
     if search:
         matching = [
@@ -200,8 +318,8 @@ def rules(
             if search.lower() in label.lower() or search.lower() in code.lower()
         ]
         query = query.where(
-            AssociationRule.antecedent.has_any(array(matching))
-            | AssociationRule.consequent.has_any(array(matching))
+            AssociationRule.antecedent.has_any(array(matching, type_=String))
+            | AssociationRule.consequent.has_any(array(matching, type_=String))
         )
     total = session.scalar(select(func.count()).select_from(query.subquery()))
     rows = session.scalars(
@@ -218,6 +336,34 @@ def rules(
     return {"items": [rule_dict(r, labels) for r in rows], "total": total}
 
 
+def pair_results(
+    run, session, page, page_size, min_lift=0, min_confidence=0, search=""
+):
+    labels = names(session, run.dataset_id)
+    query = select(Adjacency).where(
+        Adjacency.run_id == run.run_id, Adjacency.lift >= min_lift
+    )
+    if min_confidence:
+        query = query.where(
+            func.greatest(Adjacency.confidence_a_b, Adjacency.confidence_b_a)
+            >= min_confidence
+        )
+    if search:
+        matching = [
+            code
+            for code, label in labels.items()
+            if search.lower() in label.lower() or search.lower() in code.lower()
+        ]
+        query = query.where(
+            Adjacency.product_a.in_(matching) | Adjacency.product_b.in_(matching)
+        )
+    total = session.scalar(select(func.count()).select_from(query.subquery()))
+    rows = session.scalars(
+        query.order_by(Adjacency.rank).offset((page - 1) * page_size).limit(page_size)
+    )
+    return {"items": [pair_dict(row, labels) for row in rows], "total": total}
+
+
 @app.get("/api/v1/runs/{id}/adjacencies")
 def adjacencies(
     id: UUID,
@@ -225,15 +371,11 @@ def adjacencies(
     page: PAGE = 1,
     page_size: SIZE = 25,
     min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+    search: Annotated[str, Query(max_length=100)] = "",
 ):
     run = completed(session, id)
-    query = select(Adjacency).where(Adjacency.run_id == id, Adjacency.lift >= min_lift)
-    total = session.scalar(select(func.count()).select_from(query.subquery()))
-    rows = session.scalars(
-        query.order_by(Adjacency.rank).offset((page - 1) * page_size).limit(page_size)
-    )
-    labels = names(session, run.dataset_id)
-    return {"items": [pair_dict(r, labels) for r in rows], "total": total}
+    return pair_results(run, session, page, page_size, min_lift, min_confidence, search)
 
 
 def report_data(id, session):
@@ -243,12 +385,23 @@ def report_data(id, session):
 
 
 @app.get("/api/v1/runs/{id}/report")
-def report(id: UUID, session: DB, page: PAGE = 1, page_size: SIZE = 25):
-    run, dataset, _ = report_data(id, session)
+def report(
+    id: UUID,
+    session: DB,
+    page: PAGE = 1,
+    page_size: SIZE = 25,
+    search: Annotated[str, Query(max_length=100)] = "",
+    min_lift: Annotated[float, Query(ge=0, allow_inf_nan=False)] = 0,
+    min_confidence: Annotated[float, Query(ge=0, le=1, allow_inf_nan=False)] = 0,
+):
+    run = completed(session, id)
+    dataset = get(session, Dataset, run.dataset_id)
     return {
         "run": RunOut.model_validate(run),
         "dataset": DatasetOut.model_validate(dataset),
-        "recommendations": adjacencies(id, session, page, page_size, 0),
+        "recommendations": pair_results(
+            run, session, page, page_size, min_lift, min_confidence, search
+        ),
         "review": "Evidence-based conceptual adjacency only. Check aisle space, safety, category compatibility and seasonality. No causal sales improvement demonstrated.",
     }
 
@@ -281,7 +434,10 @@ def report_csv(id: UUID, session: DB):
                 k: (
                     "'" + v
                     if isinstance(v, str)
-                    and v.startswith(("=", "+", "-", "@", "\t", "\r"))
+                    and (
+                        v.startswith(("\t", "\r", "\n"))
+                        or v.lstrip().startswith(("=", "+", "-", "@"))
+                    )
                     else v
                 )
                 for k, v in data.items()
@@ -294,3 +450,15 @@ def report_csv(id: UUID, session: DB):
             "Content-Disposition": f'attachment; filename="recommendations-{id}.csv"'
         },
     )
+
+
+@app.get("/api/v1/account")
+def account(user=Depends(current_user)):
+    profile = user.profile
+    return {
+        "user_id": user.user_id,
+        "email": user.email,
+        "display_name": profile.get("user_metadata", {}).get("display_name", ""),
+        "created_at": profile.get("created_at"),
+        "email_verified": bool(profile.get("email_confirmed_at")),
+    }

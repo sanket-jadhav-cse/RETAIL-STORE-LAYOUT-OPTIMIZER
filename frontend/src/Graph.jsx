@@ -39,11 +39,6 @@ function activate(event, action) {
     action();
   }
 }
-function labelAnchor(cosine) {
-  if (cosine > 0.2) return "start";
-  if (cosine < -0.2) return "end";
-  return "middle";
-}
 export default function Graph({ pairs }) {
   const [selected, setSelected] = useState(null),
     [product, setProduct] = useState(""),
@@ -61,20 +56,31 @@ export default function Graph({ pairs }) {
       ),
     [pairs],
   );
-  const nodes = useMemo(
-    () =>
-      [...new Set(pairs.flatMap((p) => [p.product_a, p.product_b]))].map(
-        (id, i, all) => ({
-          id,
-          x: 400 + 270 * Math.cos((i / all.length) * 2 * Math.PI),
-          y: 300 + 225 * Math.sin((i / all.length) * 2 * Math.PI),
-          labelX: 400 + 300 * Math.cos((i / all.length) * 2 * Math.PI),
-          labelY: 304 + 255 * Math.sin((i / all.length) * 2 * Math.PI),
-          anchor: labelAnchor(Math.cos((i / all.length) * 2 * Math.PI)),
-        }),
-      ),
-    [pairs],
-  );
+  const nodes = useMemo(() => {
+    const points = [
+      ...new Set(pairs.flatMap((p) => [p.product_a, p.product_b])),
+    ].map((id, i, all) => {
+      const cosine = Math.cos((i / all.length) * 2 * Math.PI);
+      return {
+        id,
+        x: 400 + 190 * cosine,
+        y: 300 + 210 * Math.sin((i / all.length) * 2 * Math.PI),
+        side: cosine >= 0 ? "right" : "left",
+        labelX: cosine >= 0 ? 790 : 10,
+        anchor: cosine >= 0 ? "end" : "start",
+      };
+    });
+    for (const side of ["left", "right"]) {
+      const group = points
+        .filter((point) => point.side === side)
+        .sort((a, b) => a.y - b.y);
+      group.forEach((point, index) => {
+        point.labelY =
+          group.length === 1 ? 300 : 55 + (index / (group.length - 1)) * 490;
+      });
+    }
+    return points;
+  }, [pairs]);
   const positions = Object.fromEntries(nodes.map((node) => [node.id, node]));
   function reset() {
     setZoom(1);
@@ -215,13 +221,23 @@ export default function Graph({ pairs }) {
                       cy={node.y}
                       r="15"
                     />
+                    <line
+                      className="graph-label-guide"
+                      x1={node.x}
+                      y1={node.y}
+                      x2={node.side === "right" ? 620 : 180}
+                      y2={node.labelY - 4}
+                      aria-hidden="true"
+                    />
                     <text
                       className="graph-node-label"
                       x={node.labelX}
                       y={node.labelY}
                       textAnchor={node.anchor}
                     >
-                      {node.id}
+                      {(labels[node.id] || node.id).length > 25
+                        ? `${(labels[node.id] || node.id).slice(0, 24)}…`
+                        : labels[node.id] || node.id}
                     </text>
                     <title>{labels[node.id]}</title>
                   </g>

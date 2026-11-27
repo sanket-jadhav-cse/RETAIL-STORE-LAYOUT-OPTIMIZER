@@ -6,9 +6,7 @@ export function initialTheme() {
   } catch {
     /* Storage can be disabled by the browser. */
   }
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return "dark";
 }
 export function useTheme() {
   const [theme, setTheme] = useState(initialTheme);

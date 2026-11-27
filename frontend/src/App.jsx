@@ -1,45 +1,49 @@
 import { useEffect, useRef, useState } from "react";
 import { api, errorMessage, downloadReport, runPath } from "./api";
 import Icon from "./Icon";
+import RunSelector from "./RunSelector";
+import Sidebar from "./Sidebar";
+import { Popover } from "./overlays";
+import Account, { UserMenu } from "./Account";
 import Overview from "./Overview";
 import { DatasetScreen, MiningScreen, ResultsScreen } from "./Results";
 import { Notice, Status } from "./ui";
 import { useTheme } from "./theme";
 
 const pages = [
-  "Dashboard",
-  "Dataset",
-  "Configure mining",
-  "Association rules",
-  "Layout visualization",
-  "Recommendation report",
+  "Overview",
+  "Datasets",
+  "Mining",
+  "Association Rules",
+  "Product Layout",
+  "Reports",
+  "Account",
 ];
 const pageIcons = ["grid", "database", "sliders", "rules", "network", "report"];
 const headings = [
-  "Purchase patterns, made practical.",
-  "Know your source data.",
-  "Find meaningful relationships.",
-  "Inspect the evidence.",
-  "Explore product connections.",
-  "Recommendations with context.",
+  "Retail Store Layout Optimizer",
+  "Datasets",
+  "Mining",
+  "Association rules",
+  "Product layout",
+  "Reports",
+  "Your account",
 ];
 const descriptions = [
-  "A clearer picture of what your customers buy together.",
+  "FP-Growth · Retail Analytics Dashboard",
   "Understand the source and quality behind every recommendation.",
   "Configure your analysis and uncover patterns in purchase history.",
   "Turn association metrics into informed merchandising decisions.",
   "See the connections behind your next product display.",
   "A practical evidence trail for your merchandising review.",
+  "Manage your profile and account security.",
 ];
 export default function App() {
   const [screen, setScreen] = useState(0),
     [datasets, setDatasets] = useState([]),
     [datasetId, setDatasetId] = useState(""),
     [run, setRun] = useState(null),
-    [runId, setRunId] = useState(
-      () => window.localStorage.getItem("retailRun") || "",
-    ),
-    [runInput, setRunInput] = useState(""),
+    [runId, setRunId] = useState(""),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [refresh, setRefresh] = useState(0),
@@ -48,10 +52,13 @@ export default function App() {
     [search, setSearch] = useState(""),
     [searchQuery, setSearchQuery] = useState(""),
     [lift, setLift] = useState(0),
+    [support, setSupport] = useState(0),
+    [confidence, setConfidence] = useState(0),
     [sort, setSort] = useState("lift"),
-    [token, setToken] = useState(""),
     [busy, setBusy] = useState(false),
+    [renaming, setRenaming] = useState(false),
     [params, setParams] = useState({
+      name: "",
       min_support: 0.02,
       min_confidence: 0.5,
       min_lift: 1,
@@ -59,12 +66,22 @@ export default function App() {
     }),
     [theme, toggleTheme] = useTheme(),
     [menuOpen, setMenuOpen] = useState(false),
+    [collapsed, updateCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem("retailSidebarCollapsed") === "true";
+      } catch {
+        return false;
+      }
+    }),
     [overviewPairs, setOverviewPairs] = useState(null),
     [overviewError, setOverviewError] = useState(false),
     [exporting, setExporting] = useState(false),
     [feedback, setFeedback] = useState("");
   const heading = useRef(null),
-    focusNextPage = useRef(false);
+    focusNextPage = useRef(false),
+    selectedRun = useRef(null),
+    activeRunId = useRef(runId);
+  activeRunId.current = runId;
   const dataset = datasets.find((d) => d.dataset_id === datasetId);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -109,7 +126,6 @@ export default function App() {
         if (active) {
           setRun(data);
           if (data.dataset_id) setDatasetId(data.dataset_id);
-          window.localStorage.setItem("retailRun", runId);
           if (["Queued", "Running"].includes(data.status))
             timer = setTimeout(poll, 1500);
         }
@@ -117,7 +133,12 @@ export default function App() {
         if (active) setError(errorMessage(error));
       }
     };
-    poll();
+    if (selectedRun.current?.run_id === runId) {
+      const loaded = selectedRun.current;
+      selectedRun.current = null;
+      if (["Queued", "Running"].includes(loaded.status))
+        timer = setTimeout(poll, 1500);
+    } else poll();
     return () => {
       active = false;
       clearTimeout(timer);
@@ -129,9 +150,9 @@ export default function App() {
   }, [search]);
   useEffect(() => {
     setPage(1);
-  }, [screen, runId, searchQuery, lift, sort]);
+  }, [screen, runId, searchQuery, lift, sort, support, confidence]);
   useEffect(() => {
-    if (run?.status !== "Completed" || screen < 3) return;
+    if (run?.status !== "Completed" || screen < 3 || screen > 5) return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -144,6 +165,8 @@ export default function App() {
           page_size: 25,
           search: searchQuery,
           min_lift: lift,
+          min_support: support,
+          min_confidence: confidence,
           sort,
         },
         signal: controller.signal,
@@ -158,7 +181,17 @@ export default function App() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [screen, runId, run?.status, page, searchQuery, lift, sort]);
+  }, [
+    screen,
+    runId,
+    run?.status,
+    page,
+    searchQuery,
+    lift,
+    sort,
+    support,
+    confidence,
+  ]);
   useEffect(() => {
     setOverviewPairs(null);
     setOverviewError(false);
@@ -180,6 +213,14 @@ export default function App() {
       });
     return () => controller.abort();
   }, [runId, run?.status, refresh]);
+  function setCollapsed(value) {
+    updateCollapsed(value);
+    try {
+      localStorage.setItem("retailSidebarCollapsed", String(value));
+    } catch {
+      /* Optional preference. */
+    }
+  }
   function navigate(index) {
     if (index === screen) {
       setMenuOpen(false);
@@ -201,8 +242,40 @@ export default function App() {
     setOverviewPairs(null);
     setOverviewError(false);
     setRunId(datasets.find((d) => d.dataset_id === id)?.latest_run_id || "");
-    window.localStorage.removeItem("retailRun");
     setError("");
+  }
+  function chooseRun(next) {
+    if (next.run_id === runId) {
+      setRun(next);
+      setError("");
+      return;
+    }
+    selectedRun.current = next;
+    setRun(next);
+    setRunId(next.run_id);
+    setDatasetId(next.dataset_id);
+    setResult(null);
+    setOverviewPairs(null);
+    setPage(1);
+    setError("");
+  }
+  async function renameRun(event) {
+    event.preventDefault();
+    if (renaming) return;
+    const renamedId = runId;
+    setRenaming(true);
+    try {
+      const name = new FormData(event.currentTarget).get("name");
+      const { data } = await api.patch(runPath(renamedId), { name });
+      if (activeRunId.current !== renamedId) return;
+      setRun(data);
+      setFeedback("Run name updated.");
+      setRefresh((n) => n + 1);
+    } catch (e) {
+      if (activeRunId.current === renamedId) setError(errorMessage(e));
+    } finally {
+      setRenaming(false);
+    }
   }
   async function submit(e) {
     e.preventDefault();
@@ -211,21 +284,17 @@ export default function App() {
     setError("");
     setFeedback("");
     try {
-      const { data } = await api.post(
-        "/runs",
-        {
-          ...params,
-          max_itemset_size:
-            params.max_itemset_size === ""
-              ? null
-              : Number(params.max_itemset_size),
-          dataset_id: datasetId,
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const { data } = await api.post("/runs", {
+        ...params,
+        name: params.name.trim() || null,
+        max_itemset_size:
+          params.max_itemset_size === ""
+            ? null
+            : Number(params.max_itemset_size),
+        dataset_id: datasetId,
+      });
       setRun(data);
       setRunId(data.run_id);
-      setToken("");
       setFeedback("Mining run submitted. Its status will update here.");
     } catch (e) {
       setError(errorMessage(e));
@@ -247,76 +316,37 @@ export default function App() {
     }
   }
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-sidebar-collapsed={collapsed}>
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <aside className="sidebar">
-        <div className="brand-row">
-          <div className="brand">
-            <span className="brand-mark">
-              <Icon name="grid" />
-            </span>
-            <div>
-              <span>RetailAtlas</span>
-              <small>Retail intelligence</small>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="icon-button menu-toggle"
-            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-            aria-expanded={menuOpen}
-            aria-controls="main-navigation"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <Icon name={menuOpen ? "close" : "menu"} />
-          </button>
-        </div>
-        <div className="sidebar-body" data-open={menuOpen}>
-          <p className="nav-label">Workspace</p>
-          <nav id="main-navigation" aria-label="Main navigation">
-            {pages.map((name, index) => (
-              <button
-                type="button"
-                key={name}
-                onClick={() => navigate(index)}
-                aria-current={screen === index ? "page" : undefined}
-                className={`nav-item ${screen === index ? "active" : ""}`}
-              >
-                <Icon name={pageIcons[index]} />
-                <span>{name}</span>
-                {screen === index && (
-                  <span className="nav-indicator" aria-hidden="true" />
-                )}
-              </button>
-            ))}
-          </nav>
-          <div className="sidebar-note">
-            <span className="sidebar-note-icon">
-              <Icon name="network" />
-            </span>
-            <h2>Built on evidence.</h2>
-            <p>Find useful connections in purchase history with FP-Growth.</p>
-            <span className="sidebar-tag">Conceptual adjacency</span>
-          </div>
-          <div className="sidebar-profile">
-            <span className="avatar">SJ</span>
-            <div>
-              <strong>Sanket Jadhav</strong>
-              <small>Retail analytics project</small>
-            </div>
-          </div>
-        </div>
-      </aside>
+      <Sidebar
+        pages={pages}
+        icons={pageIcons}
+        screen={screen}
+        onNavigate={navigate}
+        collapsed={collapsed}
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+      />
       <div className="workspace">
         <div className="topbar">
+          <button
+            type="button"
+            className="icon-button desktop-sidebar-toggle"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            <Icon name="menu" />
+          </button>
           <div className="breadcrumb">
             <span>Workspace</span>
             <span aria-hidden="true">/</span>
             <strong>{pages[screen]}</strong>
           </div>
           <div className="topbar-actions">
+            <UserMenu onAccount={() => navigate(6)} />
             <span className="engine-label">
               <Icon name="layers" />
               FP-Growth
@@ -330,9 +360,6 @@ export default function App() {
             >
               <Icon name={theme === "light" ? "moon" : "sun"} />
             </button>
-            <span className="topbar-avatar" aria-label="Sanket Jadhav">
-              SJ
-            </span>
           </div>
         </div>
         <main id="main-content" className="main-content">
@@ -371,39 +398,18 @@ export default function App() {
                 <option value="">Select a dataset</option>
                 {datasets.map((d) => (
                   <option key={d.dataset_id} value={d.dataset_id}>
-                    {d.version} · {d.basket_count.toLocaleString()} baskets
+                    {d.name || "Imported transaction dataset"} ·{" "}
+                    {d.basket_count.toLocaleString()} baskets
                   </option>
                 ))}
               </select>
             </label>
-            <details className="load-run">
-              <summary>
-                Load a previous run
-                <Icon name="chevron" />
-              </summary>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setRun(null);
-                  setResult(null);
-                  setError("");
-                  setRunId(runInput.trim());
-                }}
-              >
-                <label>
-                  Retrieve persisted run
-                  <input
-                    placeholder="Paste a run UUID"
-                    required
-                    value={runInput}
-                    onChange={(e) => setRunInput(e.target.value)}
-                  />
-                </label>
-                <button type="submit" className="button secondary">
-                  Load run
-                </button>
-              </form>
-            </details>
+            <RunSelector
+              selectedId={runId}
+              onSelect={chooseRun}
+              datasets={datasets}
+              refresh={refresh}
+            />
           </section>
           <output className="announcement sr-only">
             {feedback || (run ? `Mining status: ${run.status}` : "")}
@@ -426,23 +432,51 @@ export default function App() {
           {run && (
             <div className="run-status-row">
               <Status status={run.status} />
-              <span className="muted">Selected analysis</span>
+              <span className="selected-run-name">
+                {run.name || "Selected analysis"}
+              </span>
               {run.execution?.elapsed_seconds != null && (
                 <span className="run-duration">
                   <Icon name="clock" />
                   {run.execution.elapsed_seconds.toFixed(2)} s
                 </span>
               )}
-              <details className="run-details">
-                <summary>
-                  Run details
-                  <Icon name="chevron" />
-                </summary>
-                <div>
-                  <p>Run {run.run_id}</p>
-                  <p>Dataset {run.dataset_id}</p>
-                </div>
-              </details>
+              <Popover
+                label="Run details"
+                trigger={
+                  <button type="button" className="button secondary">
+                    Run details
+                    <Icon name="chevron" />
+                  </button>
+                }
+              >
+                <p>Run {run.run_id}</p>
+                <p>Dataset {dataset?.name || "Unavailable"}</p>
+                <p>Created {new Date(run.created_at).toLocaleString()}</p>
+                <p>
+                  Support {run.min_support} · Confidence {run.min_confidence} ·
+                  Lift {run.min_lift}
+                </p>
+                <form onSubmit={renameRun}>
+                  <label>
+                    Rename run
+                    <input
+                      name="name"
+                      required
+                      maxLength={120}
+                      defaultValue={run.name}
+                      key={`${runId}-${run.name}`}
+                    />
+                  </label>
+                  <button
+                    className="button secondary"
+                    type="submit"
+                    disabled={renaming}
+                  >
+                    {renaming ? "Saving…" : "Save run name"}
+                  </button>
+                </form>
+              </Popover>
               {run.error && <span className="run-error">{run.error}</span>}
             </div>
           )}
@@ -457,20 +491,36 @@ export default function App() {
                 onNavigate={navigate}
               />
             )}
-            {screen === 1 && <DatasetScreen dataset={dataset} />}
+            {screen === 0 && (
+              <RunSelector
+                inline
+                selectedId={runId}
+                onSelect={chooseRun}
+                datasets={datasets}
+                refresh={refresh}
+              />
+            )}
+            {screen === 1 && (
+              <DatasetScreen
+                dataset={dataset}
+                datasets={datasets}
+                onSelect={chooseDataset}
+              />
+            )}
             {screen === 2 && (
               <MiningScreen
                 params={params}
                 setParams={setParams}
-                token={token}
-                setToken={setToken}
                 busy={busy}
                 datasetId={datasetId}
                 run={run}
                 onSubmit={submit}
               />
             )}
-            {screen >= 3 && (
+            {screen === 6 && (
+              <Account collapsed={collapsed} setCollapsed={setCollapsed} />
+            )}
+            {screen >= 3 && screen <= 5 && (
               <ResultsScreen
                 screen={screen}
                 runId={runId}
@@ -481,6 +531,10 @@ export default function App() {
                 setPage={setPage}
                 search={search}
                 setSearch={setSearch}
+                support={support}
+                setSupport={setSupport}
+                confidence={confidence}
+                setConfidence={setConfidence}
                 lift={lift}
                 setLift={setLift}
                 sort={sort}

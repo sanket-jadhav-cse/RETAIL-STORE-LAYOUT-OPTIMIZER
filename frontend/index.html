@@ -8,13 +8,11 @@
         const stored = localStorage.getItem("retailTheme");
         let theme = stored;
         if (!["light", "dark"].includes(theme)) {
-          theme = matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light";
+          theme = "dark";
         }
         document.documentElement.dataset.theme = theme;
       } catch {
-        document.documentElement.dataset.theme = "light";
+        document.documentElement.dataset.theme = "dark";
       }
     </script>
     <title>Retail Atlas · Layout Optimizer</title>

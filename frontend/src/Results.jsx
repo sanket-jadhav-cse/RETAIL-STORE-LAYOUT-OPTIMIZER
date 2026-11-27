@@ -1,5 +1,6 @@
+import { useState } from "react";
 import Icon from "./Icon";
-import Graph, { PairDetails, pct } from "./Graph";
+import Graph, { pct } from "./Graph";
 import { DatasetQuality } from "./Overview";
 import { EmptyResults, Pager, SectionHeading, Notice } from "./ui";
 
@@ -16,21 +17,64 @@ const qualityLabels = {
   invalid_quantity: "Invalid or non-positive quantities",
   exact_duplicates: "Exact duplicate records",
 };
-export function DatasetScreen({ dataset }) {
-  if (!dataset)
-    return (
-      <Notice>
-        Select an imported dataset to inspect its source and quality.
-      </Notice>
-    );
+export function DatasetScreen({ dataset, datasets = [], onSelect }) {
+  const [search, setSearch] = useState("");
+  const catalog = (
+    <section className="panel">
+      <SectionHeading title="Dataset catalog">
+        Choose a source for your analysis.
+      </SectionHeading>
+      <label>
+        Search datasets
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Dataset name or source…"
+        />
+      </label>
+      <div className="dataset-catalog">
+        {datasets
+          .filter((d) =>
+            `${d.name || ""} ${d.source}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
+          )
+          .map((d) => (
+            <button
+              type="button"
+              className="button secondary dataset-option"
+              key={d.dataset_id}
+              aria-pressed={d.dataset_id === dataset?.dataset_id}
+              onClick={() => onSelect?.(d.dataset_id)}
+            >
+              <strong>{d.name || "Imported transaction dataset"}</strong>
+              <span className="muted">
+                {d.transaction_start && d.transaction_end
+                  ? `${d.transaction_start} – ${d.transaction_end}`
+                  : "Dates unavailable"}{" "}
+                · {d.basket_count.toLocaleString()} baskets
+              </span>
+            </button>
+          ))}
+      </div>
+      {!datasets.some((d) =>
+        `${d.name || ""} ${d.source}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+      ) && <p className="muted">No matching datasets.</p>}
+    </section>
+  );
+  if (!dataset) return catalog;
   return (
     <>
+      {catalog}
       <section className="panel">
         <SectionHeading
           eyebrow="Source and provenance"
-          title="Online Retail dataset"
+          title={dataset.name || "Imported transaction dataset"}
         >
-          <span>{dataset.source}</span>
+          <span>{dataset.description || dataset.source}</span>
         </SectionHeading>
         <div className="source-metadata">
           <div>
@@ -45,6 +89,38 @@ export function DatasetScreen({ dataset }) {
                 : "Not available"}
             </strong>
           </div>
+          <div>
+            <span className="muted">Transaction period</span>
+            <strong>
+              {dataset.transaction_start && dataset.transaction_end
+                ? `${dataset.transaction_start} – ${dataset.transaction_end}`
+                : "Dates unavailable"}
+            </strong>
+          </div>
+          <div>
+            <span className="muted">Source organization</span>
+            <strong>{dataset.source_organization || "Not specified"}</strong>
+          </div>
+          <div>
+            <span className="muted">Processing status</span>
+            <strong>{dataset.processing_status || "Unavailable"}</strong>
+          </div>
+          {dataset.source_url?.startsWith("https://") && (
+            <div>
+              <span className="muted">Source</span>
+              <a href={dataset.source_url} target="_blank" rel="noreferrer">
+                Original dataset
+              </a>
+            </div>
+          )}
+          {dataset.doi?.startsWith("https://doi.org/") && (
+            <div>
+              <span className="muted">DOI</span>
+              <a href={dataset.doi} target="_blank" rel="noreferrer">
+                Dataset citation
+              </a>
+            </div>
+          )}
           <div>
             <span className="muted">Mining level</span>
             <strong>One basket per invoice</strong>
@@ -64,7 +140,16 @@ export function DatasetScreen({ dataset }) {
               </caption>
               <tbody>
                 {Object.entries(dataset.summary)
-                  .filter(([key]) => key !== "excluded" && key !== "policy")
+                  .filter(
+                    ([key]) =>
+                      ![
+                        "excluded",
+                        "policy",
+                        "metadata_version",
+                        "transaction_start",
+                        "transaction_end",
+                      ].includes(key),
+                  )
                   .map(([key, value]) => (
                     <tr key={key}>
                       <th scope="row">
@@ -119,8 +204,6 @@ export function DatasetScreen({ dataset }) {
 export function MiningScreen({
   params,
   setParams,
-  token,
-  setToken,
   busy,
   datasetId,
   run,
@@ -176,62 +259,60 @@ export function MiningScreen({
           strength.
         </SectionHeading>
         <form onSubmit={onSubmit}>
-          <div className="form-grid">
-            {fields.map(([key, title, min, max, step, help]) => (
-              <label key={key} htmlFor={key}>
-                <span>{title}</span>
-                <input
-                  id={key}
-                  aria-label={title}
-                  name={key}
-                  type="number"
-                  min={min}
-                  max={max}
-                  step={step}
-                  required={key !== "max_itemset_size"}
-                  value={params[key]}
-                  aria-describedby={`${key}-help`}
-                  onChange={(e) =>
-                    setParams({
-                      ...params,
-                      [key]:
-                        e.target.value === "" ? "" : Number(e.target.value),
-                    })
-                  }
-                />
-                <span id={`${key}-help`} className="field-help">
-                  {help}
-                </span>
-              </label>
-            ))}
-          </div>
-          <div className="operator-section">
-            <Icon name="shield" />
-            <div>
-              <h3>Authorized mining access</h3>
-              <p className="muted">
-                Reading results is open. Starting a run requires your operator
-                token.
-              </p>
-            </div>
-          </div>
-          <label className="token-field" htmlFor="operator-token">
-            <span>Operator token</span>
+          <label className="run-name-field">
+            Run name (optional)
             <input
-              id="operator-token"
-              aria-label="Operator token"
-              name="operator_token"
-              type="password"
-              autoComplete="off"
-              required
-              value={token}
-              aria-describedby="token-help"
-              onChange={(e) => setToken(e.target.value)}
+              value={params.name || ""}
+              maxLength={120}
+              placeholder="For example, High-Confidence Product Associations"
+              onChange={(e) => setParams({ ...params, name: e.target.value })}
             />
-            <span id="token-help" className="field-help">
-              Used for this request only; never saved in browser storage.
+            <span className="field-help">
+              Leave blank for a name based on the dataset, date and thresholds.
             </span>
           </label>
+          <div className="form-grid">
+            {fields.map(([key, title, min, max, step, help]) => {
+              const field = (
+                <label key={key} htmlFor={key}>
+                  <span>{title}</span>
+                  <input
+                    id={key}
+                    aria-label={title}
+                    name={key}
+                    type="number"
+                    min={min}
+                    max={max}
+                    step={step}
+                    required={key !== "max_itemset_size"}
+                    value={params[key]}
+                    aria-describedby={`${key}-help`}
+                    onChange={(e) =>
+                      setParams({
+                        ...params,
+                        [key]:
+                          e.target.value === "" ? "" : Number(e.target.value),
+                      })
+                    }
+                  />
+                  <span id={`${key}-help`} className="field-help">
+                    {help}
+                  </span>
+                </label>
+              );
+              return key === "max_itemset_size" ? (
+                <details className="advanced-settings" key={key}>
+                  <summary>Advanced settings</summary>
+                  {field}
+                </details>
+              ) : (
+                field
+              );
+            })}
+          </div>
+          <p className="muted">
+            Runs and results are private to your signed-in account.
+          </p>
           <div className="form-actions">
             <span className="muted">{submissionHelp}</span>
             <button
@@ -315,6 +396,10 @@ export function ResultsScreen({
   setPage,
   search,
   setSearch,
+  support,
+  setSupport,
+  confidence,
+  setConfidence,
   lift,
   setLift,
   sort,
@@ -349,9 +434,9 @@ export function ResultsScreen({
       >
         {view.description}
       </SectionHeading>
-      {screen < 5 && (
+      {
         <div className="results-toolbar">
-          {screen === 3 && (
+          {
             <>
               <label className="search-field">
                 <span>Search products</span>
@@ -365,18 +450,23 @@ export function ResultsScreen({
                   />
                 </div>
               </label>
-              <label>
-                <span>Sort by</span>
-                <select value={sort} onChange={(e) => setSort(e.target.value)}>
-                  {["lift", "support", "confidence"].map((s) => (
-                    <option key={s} value={s}>
-                      {s[0].toUpperCase() + s.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {screen === 3 && (
+                <label>
+                  <span>Sort by</span>
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                  >
+                    {["lift", "support", "confidence"].map((s) => (
+                      <option key={s} value={s}>
+                        {s[0].toUpperCase() + s.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </>
-          )}
+          }
           <label>
             <span>Minimum lift</span>
             <input
@@ -387,8 +477,42 @@ export function ResultsScreen({
               onChange={(e) => setLift(Math.max(0, Number(e.target.value)))}
             />
           </label>
+          {screen === 3 && (
+            <label>
+              Minimum support
+              <input
+                type="number"
+                min="0"
+                max="1"
+                step=".01"
+                value={support}
+                onChange={(e) =>
+                  setSupport(Math.min(1, Math.max(0, Number(e.target.value))))
+                }
+              />
+            </label>
+          )}
+          <label>
+            Minimum confidence
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step=".01"
+              aria-label="Minimum confidence"
+              value={confidence}
+              onChange={(e) =>
+                setConfidence(Math.min(1, Math.max(0, Number(e.target.value))))
+              }
+            />
+            <span className="field-help">
+              {screen === 3
+                ? "Directional confidence"
+                : "Either qualifying direction"}
+            </span>
+          </label>
         </div>
-      )}
+      }
       {!loading && rows?.length === 0 && <EmptyResults />}
       {screen === 3 && rows?.length > 0 && (
         <div
@@ -410,8 +534,28 @@ export function ResultsScreen({
                   "Confidence",
                   "Lift",
                 ].map((h) => (
-                  <th key={h} scope="col">
-                    {h}
+                  <th
+                    key={h}
+                    scope="col"
+                    aria-sort={
+                      ["Support", "Confidence", "Lift"].includes(h) &&
+                      sort === h.toLowerCase()
+                        ? "descending"
+                        : undefined
+                    }
+                  >
+                    {["Support", "Confidence", "Lift"].includes(h) ? (
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setSort(h.toLowerCase())}
+                      >
+                        {h}
+                        {sort === h.toLowerCase() ? " ↓" : ""}
+                      </button>
+                    ) : (
+                      h
+                    )}
                   </th>
                 ))}
               </tr>
@@ -421,7 +565,8 @@ export function ResultsScreen({
                 <tr key={r.rule_id}>
                   <td>
                     <span className="product-name">
-                      {r.antecedent_names.join(" + ")}
+                      {r.antecedent_names.join(" + ")}{" "}
+                      <span aria-label="leads to">→</span>
                     </span>
                     <span className="product-code">
                       {r.antecedent.join(", ")}
@@ -447,14 +592,25 @@ export function ResultsScreen({
         </div>
       )}
       {screen === 4 && rows?.length > 0 && (
-        <Graph key={`${runId}-${page}-${lift}`} pairs={rows} />
+        <Graph
+          key={`${runId}-${page}-${lift}-${confidence}-${search}`}
+          pairs={rows}
+        />
       )}
       {screen === 5 && result && (
         <>
           <div className="report-overview">
             <div>
-              <h3>{result.dataset.source}</h3>
+              <h3>{result.dataset.name || result.dataset.source}</h3>
               <p className="muted">Dataset version {result.dataset.version}</p>
+              <p className="muted">
+                {result.dataset.transaction_start &&
+                result.dataset.transaction_end
+                  ? `${result.dataset.transaction_start} – ${result.dataset.transaction_end} · `
+                  : ""}
+                {result.dataset.basket_count?.toLocaleString()} baskets
+              </p>
+              <p className="muted">{result.run.name}</p>
             </div>
             <button
               type="button"
@@ -487,18 +643,54 @@ export function ResultsScreen({
             <Icon name="info" />
             <p>{result.review}</p>
           </div>
-          <div className="report-pairs">
-            {rows?.map((pair) => (
-              <article key={pair.rank} className="report-pair">
-                <div className="report-pair-top">
-                  <span className="pair-rank">#{pair.rank}</span>
-                  <span className="product-code">
-                    {pair.product_a} / {pair.product_b}
-                  </span>
-                </div>
-                <PairDetails pair={pair} />
-              </article>
-            ))}
+          <div
+            className="table-scroll"
+            role="region"
+            tabIndex="0"
+            aria-label="Scrollable recommendation report"
+          >
+            <table className="recommendation-table">
+              <caption className="sr-only">
+                Ranked product recommendations and supporting evidence
+              </caption>
+              <thead>
+                <tr>
+                  {[
+                    "Rank",
+                    "Product pair",
+                    "Support",
+                    "Confidence A → B",
+                    "Confidence B → A",
+                    "Lift",
+                    "Explanation",
+                  ].map((title) => (
+                    <th scope="col" key={title}>
+                      {title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows?.map((pair) => (
+                  <tr key={pair.rank}>
+                    <td className="numeric">{pair.rank}</td>
+                    <td>
+                      <strong className="product-name">{pair.name_a}</strong>
+                      <span className="muted">↔</span>
+                      <strong className="product-name">{pair.name_b}</strong>
+                      <span className="product-code">
+                        {pair.product_a} / {pair.product_b}
+                      </span>
+                    </td>
+                    <td className="numeric">{pct(pair.support)}</td>
+                    <td className="numeric">{pct(pair.confidence_a_b)}</td>
+                    <td className="numeric">{pct(pair.confidence_b_a)}</td>
+                    <td className="numeric">{pair.lift.toFixed(3)}</td>
+                    <td>{pair.rationale}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}

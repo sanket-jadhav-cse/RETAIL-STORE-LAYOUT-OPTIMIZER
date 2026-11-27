@@ -34,6 +34,7 @@ with engine.begin() as conn:
                 f"CREATE POLICY runtime_access ON retail.{table} TO retail_app USING (true) WITH CHECK (true)"
             )
         )
+    conn.execute(text("GRANT EXECUTE ON FUNCTION retail.mining_busy() TO retail_app"))
 url = engine.url.set(username="retail_app.gycudrddfpchdfmiqvny", password=password)
 path = Path(__file__).resolve().parents[1] / ".env.runtime"
 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
