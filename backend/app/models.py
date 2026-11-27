@@ -68,6 +68,13 @@ class MiningRun(Base):
     __table_args__ = (
         UniqueConstraint("run_id", "dataset_id"),
         Index(
+            "ix_runs_owner_submission",
+            "owner_id",
+            "submission_key",
+            unique=True,
+            postgresql_where=text("submission_key IS NOT NULL"),
+        ),
+        Index(
             "ix_runs_owner_created",
             "owner_id",
             desc("created_at"),
@@ -91,6 +98,7 @@ class MiningRun(Base):
     )
     owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID)
     name: Mapped[str] = mapped_column(String(120), default="Market Basket Analysis")
+    submission_key: Mapped[uuid.UUID | None] = mapped_column(UUID)
     min_support: Mapped[float] = mapped_column(Float)
     min_confidence: Mapped[float] = mapped_column(Float)
     min_lift: Mapped[float] = mapped_column(Float)

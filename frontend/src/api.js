@@ -32,13 +32,16 @@ export function errorMessage(error) {
   return "Unable to reach the service. Please retry.";
 }
 export async function downloadReport(id) {
-  const { data } = await api.get(runPath(id, "report.csv"), {
+  return downloadBlob(runPath(id, "report.csv"), `recommendations-${id}.csv`);
+}
+export async function downloadBlob(path, filename) {
+  const { data } = await api.get(path, {
     responseType: "blob",
   });
   const url = URL.createObjectURL(data);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `recommendations-${id}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }

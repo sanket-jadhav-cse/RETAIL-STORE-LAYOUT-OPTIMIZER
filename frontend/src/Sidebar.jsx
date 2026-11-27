@@ -44,7 +44,7 @@ export default function Sidebar({
       <div className="sidebar-body" data-open="true">
         <p className="nav-label">Workspace</p>
         <nav aria-label="Main navigation">
-          {pages.slice(0, 6).map((name, index) => (
+          {pages.slice(0, -1).map((name, index) => (
             <button
               type="button"
               key={name}
@@ -67,8 +67,9 @@ export default function Sidebar({
         <div className="sidebar-bottom">
           <button
             type="button"
-            className={`nav-item ${screen === 6 ? "active" : ""}`}
-            onClick={() => onNavigate(6)}
+            className={`nav-item ${screen === pages.length - 1 ? "active" : ""}`}
+            onClick={() => onNavigate(pages.length - 1)}
+            aria-current={screen === pages.length - 1 ? "page" : undefined}
             aria-label="Account"
             title={collapsed && !mobile ? "Account" : undefined}
           >

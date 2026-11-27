@@ -1,11 +1,22 @@
 import {
-  render,
+  render as baseRender,
   screen,
   fireEvent,
   waitFor,
   cleanup,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+const render = (ui) =>
+  baseRender(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      {ui}
+    </QueryClientProvider>,
+  );
 import RunSelector from "./RunSelector";
 import { api } from "./api";
 vi.mock("./api", async (original) => ({
@@ -20,13 +31,14 @@ const first = {
   created_at: "2026-11-26T12:00:00Z",
   execution: { rule_count: 52, adjacency_count: 38 },
 };
-beforeEach(() =>
+beforeEach(() => {
+  api.get.mockReset();
   api.get.mockImplementation((path) =>
     Promise.resolve({
       data: path === "/runs" ? { items: [first], total: 1 } : first,
     }),
-  ),
-);
+  );
+});
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -123,4 +135,66 @@ it("keeps recoverable errors open and supports retry and empty results", async (
   await screen.findByRole("alert");
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   expect(await screen.findByText(/No previous runs yet/)).toBeInTheDocument();
+});
+
+it("cancels a pending selection when dismissed and ignores its late response", async () => {
+  let finish;
+  api.get.mockImplementation((path) =>
+    path === "/runs"
+      ? Promise.resolve({ data: { items: [first], total: 1 } })
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
+  );
+  const selected = vi.fn();
+  render(<RunSelector onSelect={selected} />);
+  fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
+  fireEvent.click(
+    await screen.findByRole("option", { name: /Baseline Market Basket/ }),
+  );
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  fireEvent.keyDown(
+    screen.getByRole("combobox", { name: "Search previous runs" }),
+    { key: "Escape" },
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  finish({ data: first });
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(selected).not.toHaveBeenCalled();
+});
+
+it("resets keyboard selection when a filtered result list becomes shorter", async () => {
+  const second = {
+    ...first,
+    run_id: "00000000-0000-4000-8000-000000000002",
+    name: "Second analysis",
+  };
+  api.get.mockImplementation((path, options) =>
+    Promise.resolve({
+      data:
+        path === "/runs"
+          ? {
+              items:
+                options?.params?.search === "only" ? [first] : [first, second],
+              total: 2,
+            }
+          : first,
+    }),
+  );
+  const selected = vi.fn();
+  render(<RunSelector onSelect={selected} />);
+  fireEvent.click(screen.getByRole("button", { name: "Load a previous run" }));
+  await screen.findByRole("option", { name: /Second analysis/ });
+  const input = screen.getByRole("combobox", { name: "Search previous runs" });
+  fireEvent.keyDown(input, { key: "ArrowUp" });
+  fireEvent.change(input, { target: { value: "only" } });
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("option", { name: /Second analysis/ }),
+    ).not.toBeInTheDocument(),
+  );
+  fireEvent.keyDown(input, { key: "Enter" });
+  await waitFor(() => expect(selected).toHaveBeenCalledWith(first));
 });

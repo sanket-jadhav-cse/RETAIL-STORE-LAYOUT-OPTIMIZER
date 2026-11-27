@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => ({
     ),
   ),
   plugins: [react()],
+  server: { proxy: { "/api": { target: "http://127.0.0.1:8000" } } },
   test: {
     include: ["src/**/*.test.{js,jsx}"],
     environment: "jsdom",

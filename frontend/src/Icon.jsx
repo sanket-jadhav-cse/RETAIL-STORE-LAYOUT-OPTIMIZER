@@ -1,4 +1,5 @@
 const paths = {
+  upload: <path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5" />,
   grid: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

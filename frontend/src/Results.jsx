@@ -1,391 +1,8 @@
-import { useState } from "react";
 import Icon from "./Icon";
-import Graph, { pct } from "./Graph";
-import { DatasetQuality } from "./Overview";
-import { EmptyResults, Pager, SectionHeading } from "./ui";
-
-const qualityLabels = {
-  original_records: "Original records",
-  cleaned_records: "Cleaned records",
-  basket_count: "Eligible transaction baskets",
-  product_count: "Distinct product codes",
-  repeated_product_lines: "Repeated product lines collapsed",
-  policy: "Preprocessing policy",
-  missing_invoice: "Missing invoice identifiers",
-  missing_product: "Missing product identifiers",
-  cancelled: "Cancelled transactions",
-  invalid_quantity: "Invalid or non-positive quantities",
-  exact_duplicates: "Exact duplicate records",
-};
-export function DatasetScreen({ dataset, datasets = [], onSelect }) {
-  const [search, setSearch] = useState("");
-  const catalog = (
-    <section className="panel">
-      <SectionHeading title="Dataset catalog">
-        Choose a source for your analysis.
-      </SectionHeading>
-      <label>
-        <span>Search datasets</span>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Dataset name or source…"
-        />
-      </label>
-      <div className="dataset-catalog">
-        {datasets
-          .filter((d) =>
-            `${d.name || ""} ${d.source}`
-              .toLowerCase()
-              .includes(search.toLowerCase()),
-          )
-          .map((d) => (
-            <button
-              type="button"
-              className="button secondary dataset-option"
-              key={d.dataset_id}
-              aria-pressed={d.dataset_id === dataset?.dataset_id}
-              onClick={() => onSelect?.(d.dataset_id)}
-            >
-              <strong>{d.name || "Imported transaction dataset"}</strong>
-              <span className="muted">
-                {d.transaction_start && d.transaction_end
-                  ? `${d.transaction_start} – ${d.transaction_end}`
-                  : "Dates unavailable"}{" "}
-                · {d.basket_count.toLocaleString()} baskets
-              </span>
-            </button>
-          ))}
-      </div>
-      {!datasets.some((d) =>
-        `${d.name || ""} ${d.source}`
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      ) && <p className="muted">No matching datasets.</p>}
-    </section>
-  );
-  if (!dataset) return catalog;
-  return (
-    <>
-      {catalog}
-      <section className="panel">
-        <SectionHeading
-          eyebrow="Source and provenance"
-          title={dataset.name || "Imported transaction dataset"}
-        >
-          <span>{dataset.description || dataset.source}</span>
-        </SectionHeading>
-        <div className="source-metadata">
-          <div>
-            <span className="muted">Dataset version</span>
-            <strong>{dataset.version}</strong>
-          </div>
-          <div>
-            <span className="muted">Imported</span>
-            <strong>
-              {dataset.imported_at
-                ? new Date(dataset.imported_at).toLocaleString()
-                : "Not available"}
-            </strong>
-          </div>
-          <div>
-            <span className="muted">Transaction period</span>
-            <strong>
-              {dataset.transaction_start && dataset.transaction_end
-                ? `${dataset.transaction_start} – ${dataset.transaction_end}`
-                : "Dates unavailable"}
-            </strong>
-          </div>
-          <div>
-            <span className="muted">Source organization</span>
-            <strong>{dataset.source_organization || "Not specified"}</strong>
-          </div>
-          <div>
-            <span className="muted">Processing status</span>
-            <strong>{dataset.processing_status || "Unavailable"}</strong>
-          </div>
-          {dataset.source_url?.startsWith("https://") && (
-            <div>
-              <span className="muted">Source</span>
-              <a href={dataset.source_url} target="_blank" rel="noreferrer">
-                Original dataset
-              </a>
-            </div>
-          )}
-          {dataset.doi?.startsWith("https://doi.org/") && (
-            <div>
-              <span className="muted">DOI</span>
-              <a href={dataset.doi} target="_blank" rel="noreferrer">
-                Dataset citation
-              </a>
-            </div>
-          )}
-          <div>
-            <span className="muted">Mining level</span>
-            <strong>One basket per invoice</strong>
-          </div>
-        </div>
-        <DatasetQuality dataset={dataset} />
-      </section>
-      <div className="dataset-columns">
-        <section className="panel">
-          <SectionHeading title="Preprocessing summary">
-            Every eligible invoice stays in the support denominator.
-          </SectionHeading>
-          <div className="table-scroll">
-            <table>
-              <caption className="sr-only">
-                Dataset preprocessing summary
-              </caption>
-              <tbody>
-                {Object.entries(dataset.summary)
-                  .filter(
-                    ([key]) =>
-                      ![
-                        "excluded",
-                        "policy",
-                        "metadata_version",
-                        "transaction_start",
-                        "transaction_end",
-                      ].includes(key),
-                  )
-                  .map(([key, value]) => (
-                    <tr key={key}>
-                      <th scope="row">
-                        {qualityLabels[key] || key.replaceAll("_", " ")}
-                      </th>
-                      <td className="numeric">
-                        {typeof value === "number"
-                          ? value.toLocaleString()
-                          : String(value)}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section className="panel">
-          <SectionHeading title="Excluded records">
-            Counts are applied sequentially, without double counting.
-          </SectionHeading>
-          <div className="exclusion-list">
-            {Object.entries(dataset.summary.excluded || {}).map(
-              ([key, value]) => (
-                <div key={key}>
-                  <span>{qualityLabels[key] || key.replaceAll("_", " ")}</span>
-                  <strong>{Number(value).toLocaleString()}</strong>
-                </div>
-              ),
-            )}
-          </div>
-          <div className="subtle-note">
-            <Icon name="shield" />
-            <p>
-              Customer identifiers are neither required for mining nor shown in
-              these results.
-            </p>
-          </div>
-        </section>
-      </div>
-      {dataset.summary.policy && (
-        <section className="panel policy-panel">
-          <Icon name="info" />
-          <div>
-            <h2>How baskets are prepared</h2>
-            <p>{dataset.summary.policy}</p>
-          </div>
-        </section>
-      )}
-    </>
-  );
-}
-export function MiningScreen({
-  params,
-  setParams,
-  busy,
-  datasetId,
-  run,
-  onSubmit,
-}) {
-  const fields = [
-    [
-      "min_support",
-      "Minimum support",
-      0.0001,
-      1,
-      0.0001,
-      "Share of eligible baskets containing a pattern. For example, 0.02 means 2%.",
-    ],
-    [
-      "min_confidence",
-      "Minimum confidence",
-      0.0001,
-      1,
-      0.0001,
-      "How often the consequent appears when the antecedent is purchased.",
-    ],
-    [
-      "min_lift",
-      "Minimum lift",
-      0,
-      1000000,
-      0.01,
-      "A lift above 1 indicates a positive observed association.",
-    ],
-    [
-      "max_itemset_size",
-      "Maximum itemset size (optional)",
-      1,
-      8,
-      1,
-      "Limit products in each pattern. Leave blank for no size limit.",
-    ],
-  ];
-  const active = ["Queued", "Running"].includes(run?.status);
-  let submissionHelp = "Select a dataset to begin.";
-  if (datasetId)
-    submissionHelp = "Uses every eligible basket in the selected dataset.";
-  if (active) submissionHelp = "A run is already in progress.";
-  return (
-    <div className="mining-layout">
-      <section className="panel">
-        <SectionHeading
-          eyebrow="Pattern discovery"
-          title="FP-Growth configuration"
-        >
-          Set thresholds that balance pattern coverage and relationship
-          strength.
-        </SectionHeading>
-        <form onSubmit={onSubmit}>
-          <label className="run-name-field">
-            <span>Run name (optional)</span>
-            <input
-              value={params.name || ""}
-              maxLength={120}
-              placeholder="For example, High-Confidence Product Associations"
-              onChange={(e) => setParams({ ...params, name: e.target.value })}
-            />
-            <span className="field-help">
-              Leave blank for a name based on the dataset, date and thresholds.
-            </span>
-          </label>
-          <div className="form-grid">
-            {fields.map(([key, title, min, max, step, help]) => {
-              const field = (
-                <label key={key} htmlFor={key}>
-                  <span>{title}</span>
-                  <input
-                    id={key}
-                    aria-label={title}
-                    name={key}
-                    type="number"
-                    min={min}
-                    max={max}
-                    step={step}
-                    required={key !== "max_itemset_size"}
-                    value={params[key]}
-                    aria-describedby={`${key}-help`}
-                    onChange={(e) =>
-                      setParams({
-                        ...params,
-                        [key]:
-                          e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                  <span id={`${key}-help`} className="field-help">
-                    {help}
-                  </span>
-                </label>
-              );
-              return key === "max_itemset_size" ? (
-                <details className="advanced-settings" key={key}>
-                  <summary>Advanced settings</summary>
-                  {field}
-                </details>
-              ) : (
-                field
-              );
-            })}
-          </div>
-          <p className="muted">
-            Runs and results are private to your signed-in account.
-          </p>
-          <div className="form-actions">
-            <span className="muted">{submissionHelp}</span>
-            <button
-              type="submit"
-              className="button primary"
-              disabled={busy || !datasetId || active}
-            >
-              <Icon name={busy ? "clock" : "activity"} />
-              {busy ? "Submitting…" : "Run FP-Growth"}
-            </button>
-          </div>
-        </form>
-      </section>
-      <aside className="mining-guide">
-        <div className="panel">
-          <span className="guide-icon">
-            <Icon name="layers" />
-          </span>
-          <h2>A useful starting point</h2>
-          <p>
-            Begin with the default thresholds, then adjust based on the number
-            and relevance of the relationships you find.
-          </p>
-          <dl className="guide-values">
-            <div>
-              <dt>Support</dt>
-              <dd>Pattern coverage</dd>
-            </div>
-            <div>
-              <dt>Confidence</dt>
-              <dd>Directional frequency</dd>
-            </div>
-            <div>
-              <dt>Lift</dt>
-              <dd>Association strength</dd>
-            </div>
-          </dl>
-          <div className="subtle-note">
-            <Icon name="info" />
-            <p>
-              Lower support may create many more patterns and use additional
-              memory. Confidence is directional.
-            </p>
-          </div>
-        </div>
-        <p className="evidence-note">
-          FP-Growth mines observed co-purchases. It does not train a predictive
-          sales model.
-        </p>
-      </aside>
-    </div>
-  );
-}
-const resultViews = {
-  3: {
-    eyebrow: "Directional relationships",
-    title: "Association rule explorer",
-    description:
-      "Search product names or codes, then compare the metrics behind each rule.",
-  },
-  4: {
-    eyebrow: "Conceptual product adjacency",
-    title: "Product relationship map",
-    description:
-      "Select a connection to inspect why two products may belong nearby.",
-  },
-  5: {
-    eyebrow: "Evidence-based decision support",
-    title: "Recommendation evidence",
-    description:
-      "Ranked product pairs, their supporting metrics, and practical review guidance.",
-  },
-};
+import { lazy, Suspense } from "react";
+import { pct } from "./format";
+const Graph = lazy(() => import("./Graph"));
+import { EmptyResults, Pager, PageSkeleton } from "./ui";
 export function ResultsScreen({
   screen,
   runId,
@@ -404,297 +21,293 @@ export function ResultsScreen({
   setLift,
   sort,
   setSort,
-  onExport,
-  exporting,
 }) {
-  const view = resultViews[screen];
   const rows = screen === 5 ? result?.recommendations?.items : result?.items;
   const total = screen === 5 ? result?.recommendations?.total : result?.total;
-  if (run?.status !== "Completed")
-    return (
-      <div className="panel">
-        <EmptyResults>
-          Select a completed run, or start a new analysis to inspect its
-          results.
-        </EmptyResults>
-      </div>
-    );
-  return (
-    <section className="panel results-panel" aria-busy={loading}>
-      <SectionHeading
-        eyebrow={view.eyebrow}
-        title={view.title}
-        action={
-          total != null && (
-            <span className="count-badge">
-              {total.toLocaleString()} {screen === 3 ? "rules" : "pairs"}
-            </span>
-          )
+  const totalPersisted =
+    screen === 3 ? run?.execution?.rule_count : run?.execution?.adjacency_count;
+  const reset = () => {
+    setSearch("");
+    setSupport(0);
+    setConfidence(0);
+    setLift(0);
+    setSort("lift");
+  };
+  const toolbar = (
+    <div className="results-toolbar">
+      <label className="search-field">
+        <span>Search products</span>
+        <div className="input-with-icon">
+          <Icon name="search" />
+          <input
+            type="search"
+            maxLength={100}
+            value={search}
+            placeholder="Product name or code…"
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </label>
+      {screen === 3 && (
+        <label>
+          <span>Sort by</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            {["lift", "support", "confidence"].map((s) => (
+              <option value={s} key={s}>
+                {s[0].toUpperCase() + s.slice(1)} (high to low)
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {screen === 3 && (
+        <label>
+          <span>Min. support</span>
+          <input
+            aria-label="Minimum support"
+            type="number"
+            min="0"
+            max="1"
+            step="any"
+            value={support}
+            onChange={(e) =>
+              setSupport(Math.min(1, Math.max(0, Number(e.target.value))))
+            }
+          />
+        </label>
+      )}
+      <label
+        title={
+          screen === 3
+            ? "Directional confidence"
+            : "Either qualifying direction: at least one available directional confidence meets the threshold."
         }
       >
-        {view.description}
-      </SectionHeading>
-      {
-        <div className="results-toolbar">
-          {
-            <>
-              <label className="search-field">
-                <span>Search products</span>
-                <div className="input-with-icon">
-                  <Icon name="search" />
-                  <input
-                    type="search"
-                    value={search}
-                    placeholder="Product name or code…"
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </label>
-              {screen === 3 && (
-                <label>
-                  <span>Sort by</span>
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value)}
-                  >
-                    {["lift", "support", "confidence"].map((s) => (
-                      <option key={s} value={s}>
-                        {s[0].toUpperCase() + s.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </>
+        <span>Min. confidence</span>
+        <input
+          aria-label="Minimum confidence"
+          type="number"
+          min="0"
+          max="1"
+          step="any"
+          value={confidence}
+          onChange={(e) =>
+            setConfidence(Math.min(1, Math.max(0, Number(e.target.value))))
           }
-          <label>
-            <span>Minimum lift</span>
-            <input
-              type="number"
-              min="0"
-              step=".1"
-              value={lift}
-              onChange={(e) => setLift(Math.max(0, Number(e.target.value)))}
-            />
-          </label>
-          {screen === 3 && (
-            <label>
-              <span>Minimum support</span>
-              <input
-                type="number"
-                min="0"
-                max="1"
-                step=".01"
-                value={support}
-                onChange={(e) =>
-                  setSupport(Math.min(1, Math.max(0, Number(e.target.value))))
-                }
-              />
-            </label>
-          )}
-          <label>
-            <span>Minimum confidence</span>
-            <input
-              type="number"
-              min="0"
-              max="1"
-              step=".01"
-              aria-label="Minimum confidence"
-              value={confidence}
-              onChange={(e) =>
-                setConfidence(Math.min(1, Math.max(0, Number(e.target.value))))
-              }
-            />
-            <span className="field-help">
-              {screen === 3
-                ? "Directional confidence"
-                : "Either qualifying direction"}
-            </span>
-          </label>
-        </div>
-      }
-      {!loading && rows?.length === 0 && <EmptyResults />}
-      {screen === 3 && rows?.length > 0 && (
-        <section
-          className="table-scroll"
-
-          tabIndex="0"
-          aria-label="Scrollable association rules"
-        >
-          <table className="rules-table">
-            <caption className="sr-only">
-              Association rules with support, confidence and lift
-            </caption>
-            <thead>
-              <tr>
-                {[
-                  "Antecedent",
-                  "Consequent",
-                  "Support",
-                  "Confidence",
-                  "Lift",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    scope="col"
-                    aria-sort={
-                      ["Support", "Confidence", "Lift"].includes(h) &&
-                      sort === h.toLowerCase()
-                        ? "descending"
-                        : undefined
-                    }
-                  >
-                    {["Support", "Confidence", "Lift"].includes(h) ? (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => setSort(h.toLowerCase())}
-                      >
-                        {h}
-                        {sort === h.toLowerCase() ? " ↓" : ""}
-                      </button>
-                    ) : (
-                      h
-                    )}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.rule_id}>
-                  <td>
-                    <span className="product-name">
-                      {r.antecedent_names.join(" + ")}{" "}
-                      <span aria-label="leads to">→</span>
-                    </span>
-                    <span className="product-code">
-                      {r.antecedent.join(", ")}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="product-name">
-                      {r.consequent_names.join(" + ")}
-                    </span>
-                    <span className="product-code">
-                      {r.consequent.join(", ")}
-                    </span>
-                  </td>
-                  <td className="numeric">{pct(r.support)}</td>
-                  <td className="numeric">{pct(r.confidence)}</td>
-                  <td className="numeric">
-                    <span className="lift-badge">{r.lift.toFixed(3)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
-      )}
-      {screen === 4 && rows?.length > 0 && (
-        <Graph
-          key={`${runId}-${page}-${lift}-${confidence}-${search}`}
-          pairs={rows}
         />
-      )}
+      </label>
+      <label>
+        <span>Min. lift</span>
+        <input
+          aria-label="Minimum lift"
+          type="number"
+          min="0"
+          step="any"
+          value={lift}
+          onChange={(e) => setLift(Math.max(0, Number(e.target.value)))}
+        />
+      </label>
+      <button type="button" className="button secondary" onClick={reset}>
+        <Icon name="refresh" />
+        Reset filters
+      </button>
+    </div>
+  );
+  return (
+    <section className="panel results-panel" aria-busy={loading}>
       {screen === 5 && result && (
-        <>
-          <div className="report-overview">
-            <div>
-              <h3>{result.dataset.name || result.dataset.source}</h3>
-              <p className="muted">Dataset version {result.dataset.version}</p>
-              <p className="muted">
-                {result.dataset.transaction_start &&
-                result.dataset.transaction_end
-                  ? `${result.dataset.transaction_start} – ${result.dataset.transaction_end} · `
-                  : ""}
-                {result.dataset.basket_count?.toLocaleString()} baskets
-              </p>
-              <p className="muted">{result.run.name}</p>
+        <dl className="report-thresholds">
+          {[
+            ["Minimum support", pct(run.min_support)],
+            ["Minimum confidence", pct(run.min_confidence)],
+            ["Minimum lift", run.min_lift],
+            ["Maximum itemset size", run.max_itemset_size ?? "Unbounded"],
+            [
+              "Mining duration",
+              `${run.execution?.elapsed_seconds?.toFixed(2) ?? "—"} s`,
+            ],
+          ].map(([t, v]) => (
+            <div key={t}>
+              <dt>{t}</dt>
+              <dd>{v}</dd>
             </div>
-            <button
-              type="button"
-              className="button primary"
-              onClick={onExport}
-              disabled={exporting}
+          ))}
+        </dl>
+      )}
+      {(screen !== 4 || !rows?.length) && toolbar}
+      <div className="result-count-strip">
+        <span>
+          {total ?? "—"} matching {screen === 3 ? "rules" : "recommendations"} ·{" "}
+          {totalPersisted ?? "—"} total
+          {screen === 4 && rows
+            ? ` · ${rows.length} displayed relationships`
+            : ""}
+        </span>
+        {loading && result && <span role="status">Updating…</span>}
+      </div>
+      {loading && !result ? (
+        <PageSkeleton />
+      ) : !rows?.length ? (
+        <EmptyResults>
+          {search || lift || confidence || support
+            ? "No matching results. Reset or adjust the filters."
+            : screen === 3
+              ? "No qualifying rules for this run. Try different mining thresholds."
+              : "No adjacency recommendations for this run."}
+        </EmptyResults>
+      ) : (
+        <>
+          {screen === 3 && (
+            <section
+              className="table-scroll"
+              tabIndex="0"
+              aria-label="Scrollable association rules"
             >
-              <Icon name="download" />
-              {exporting ? "Preparing CSV…" : "Export complete CSV report"}
-            </button>
-          </div>
-          <dl className="report-thresholds">
-            {[
-              ["Minimum support", pct(result.run.min_support)],
-              ["Minimum confidence", pct(result.run.min_confidence)],
-              ["Minimum lift", result.run.min_lift],
-              ["Max. itemset size", result.run.max_itemset_size ?? "Unbounded"],
-              [
-                "Mining time",
-                `${result.run.execution.elapsed_seconds?.toFixed(2) ?? "—"} s`,
-              ],
-            ].map(([title, value]) => (
-              <div key={title}>
-                <dt>{title}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="subtle-note report-review">
-            <Icon name="info" />
-            <p>{result.review}</p>
-          </div>
-          <section
-            className="table-scroll"
-
-            tabIndex="0"
-            aria-label="Scrollable recommendation report"
-          >
-            <table className="recommendation-table">
-              <caption className="sr-only">
-                Ranked product recommendations and supporting evidence
-              </caption>
-              <thead>
-                <tr>
-                  {[
-                    "Rank",
-                    "Product pair",
-                    "Support",
-                    "Confidence A → B",
-                    "Confidence B → A",
-                    "Lift",
-                    "Explanation",
-                  ].map((title) => (
-                    <th scope="col" key={title}>
-                      {title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows?.map((pair) => (
-                  <tr key={pair.rank}>
-                    <td className="numeric">{pair.rank}</td>
-                    <td>
-                      <strong className="product-name">{pair.name_a}</strong>
-                      <span className="muted">↔</span>
-                      <strong className="product-name">{pair.name_b}</strong>
-                      <span className="product-code">
-                        {pair.product_a} / {pair.product_b}
-                      </span>
-                    </td>
-                    <td className="numeric">{pct(pair.support)}</td>
-                    <td className="numeric">{pct(pair.confidence_a_b)}</td>
-                    <td className="numeric">{pct(pair.confidence_b_a)}</td>
-                    <td className="numeric">{pair.lift.toFixed(3)}</td>
-                    <td>{pair.rationale}</td>
+              <table className="rules-table">
+                <caption className="sr-only">
+                  Directional association rules with support, confidence and
+                  lift
+                </caption>
+                <thead>
+                  <tr>
+                    {[
+                      "Antecedent",
+                      "Consequent",
+                      "Support",
+                      "Confidence",
+                      "Lift",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        scope="col"
+                        aria-sort={
+                          h.toLowerCase() === sort ? "descending" : undefined
+                        }
+                      >
+                        {["Support", "Confidence", "Lift"].includes(h) ? (
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => setSort(h.toLowerCase())}
+                          >
+                            {h}
+                            {h.toLowerCase() === sort ? " ↓" : ""}
+                          </button>
+                        ) : (
+                          h
+                        )}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.rule_id}>
+                      <td>
+                        <span className="product-name">
+                          {r.antecedent_names.join(" + ")}{" "}
+                          <span aria-label="leads to">→</span>
+                        </span>
+                        <span className="product-code">
+                          {r.antecedent.join(", ")}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="product-name">
+                          {r.consequent_names.join(" + ")}
+                        </span>
+                        <span className="product-code">
+                          {r.consequent.join(", ")}
+                        </span>
+                      </td>
+                      <td className="numeric">{pct(r.support)}</td>
+                      <td className="numeric">{pct(r.confidence)}</td>
+                      <td className="numeric">
+                        <span className="lift-badge">{r.lift.toFixed(3)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
+          {screen === 4 && (
+            <Suspense fallback={<PageSkeleton />}>
+              <Graph
+                key={`${runId}-${page}-${lift}-${confidence}-${search}`}
+                pairs={rows}
+                filters={toolbar}
+              />
+            </Suspense>
+          )}
+          {screen === 5 && (
+            <section
+              className="table-scroll"
+              tabIndex="0"
+              aria-label="Scrollable recommendation report"
+            >
+              <table className="recommendation-table">
+                <caption className="sr-only">
+                  Ranked product recommendations and supporting evidence
+                </caption>
+                <thead>
+                  <tr>
+                    {[
+                      "Rank",
+                      "Product pair",
+                      "Support",
+                      "Confidence A → B",
+                      "Confidence B → A",
+                      "Lift",
+                      "Explanation",
+                    ].map((t) => (
+                      <th scope="col" key={t}>
+                        {t}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p) => (
+                    <tr key={p.rank}>
+                      <td className="numeric">{p.rank}</td>
+                      <td>
+                        <strong className="product-name">{p.name_a}</strong>
+                        <span className="muted">↔</span>
+                        <strong className="product-name">{p.name_b}</strong>
+                        <span className="product-code">
+                          {p.product_a} / {p.product_b}
+                        </span>
+                      </td>
+                      <td className="numeric">{pct(p.support)}</td>
+                      <td className="numeric">{pct(p.confidence_a_b)}</td>
+                      <td className="numeric">{pct(p.confidence_b_a)}</td>
+                      <td className="numeric">
+                        <span className="lift-badge">{p.lift.toFixed(3)}</span>
+                      </td>
+                      <td>
+                        Co-purchased in {pct(p.support)} of baskets; lift{" "}
+                        {p.lift.toFixed(2)}. Review for merchandising.
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
         </>
       )}
-      {result && <Pager page={page} setPage={setPage} total={total} />}
+      {result && (
+        <Pager page={page} setPage={setPage} total={total || 0} size={10} />
+      )}
+      {screen === 5 && (
+        <p className="conceptual-note">
+          Conceptual adjacency supports merchandising review; it does not prove
+          increased sales or an optimal physical store layout. Unavailable
+          confidence means that direction did not qualify. Complete CSV export
+          retains the full persisted explanation.
+        </p>
+      )}
     </section>
   );
 }
