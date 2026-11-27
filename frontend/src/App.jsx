@@ -13,8 +13,6 @@ import Icon from "./Icon";
 import { UserMenu } from "./UserMenu";
 import { useTheme } from "./theme";
 import { PageSkeleton, QueryError } from "./ui";
-// These small, frequently used workspace pages share the initial private chunk.
-// This removes a measured catalog → module-loading waterfall.
 import WorkspacePage from "./WorkspacePages";
 const DatasetUpload = lazy(() => import("./DatasetUpload"));
 const AnalyticsPage = lazy(() => import("./AnalyticsPage"));
