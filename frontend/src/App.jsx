@@ -221,20 +221,8 @@ function AppShell() {
               <span aria-hidden="true">/</span>
               <strong>{name}</strong>
             </div>
-            <h1 ref={heading} tabIndex="-1">{title}</h1>
           </div>
           <div className="topbar-actions">
-            {action && (
-              <button
-                key={screen}
-                type="button"
-                className={`button ${screen === 2 ? "secondary" : "primary"}`}
-                onClick={action[2]}
-              >
-                <Icon name={action[1]} />
-                {action[0]}
-              </button>
-            )}
             <button
               type="button"
               className="icon-button"
@@ -259,6 +247,22 @@ function AppShell() {
           id="main-content"
           className={`main-content page-${destinations[screen][1].replaceAll("/", "-")}`}
         >
+          <header className={`page-header ${title === name ? "page-header-compact" : ""}`}>
+            <h1 ref={heading} tabIndex="-1" className={title === name ? "sr-only" : undefined}>
+              {title}
+            </h1>
+            {action && (
+              <button
+                key={screen}
+                type="button"
+                className={`button ${screen === 2 ? "secondary" : "primary"}`}
+                onClick={action[2]}
+              >
+                <Icon name={action[1]} />
+                {action[0]}
+              </button>
+            )}
+          </header>
           <div className="page-content">
             {screen === 0 && runQuery.isError && (
               <QueryError query={runQuery} />
