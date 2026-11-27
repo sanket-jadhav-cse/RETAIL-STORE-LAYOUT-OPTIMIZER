@@ -403,3 +403,51 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await page.reload();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 });
+
+test("table wheel scrolling reaches the page and retains horizontal access", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.setViewportSize({ width: 1024, height: 700 });
+  await page.goto("/");
+  await expect(page.getByText("358", { exact: true })).toBeVisible();
+  for (const name of ["Datasets", "Association Rules", "Reports"]) {
+    await navigate(page, name);
+    const table = page.locator(".table-scroll").first();
+    await table.evaluate((element) =>
+      element.scrollIntoView({ block: "start" }),
+    );
+    const box = await table.boundingBox();
+    await page.mouse.move(
+      box.x + Math.min(box.width / 2, 200),
+      Math.max(20, box.y + 30),
+    );
+    const before = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, 450);
+    await expect
+      .poll(() => page.evaluate(() => scrollY))
+      .toBeGreaterThan(before);
+    await page.mouse.move(1000, 300);
+    const outside = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, -200);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(outside);
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await navigate(page, "Association Rules");
+  const rules = page.getByRole("region", {
+    name: "Scrollable association rules",
+  });
+  await rules.focus();
+  await rules.press("ArrowRight");
+  await expect
+    .poll(() => rules.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
+  await rules.evaluate((element) => element.scrollIntoView({ block: "start" }));
+  const box = await rules.boundingBox();
+  await page.mouse.move(box.x + 50, Math.max(20, box.y + 50));
+  const before = await rules.evaluate((element) => element.scrollLeft);
+  await page.mouse.wheel(180, 0);
+  await expect
+    .poll(() => rules.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(before);
+});
