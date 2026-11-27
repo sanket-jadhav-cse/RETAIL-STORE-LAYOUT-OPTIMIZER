@@ -1,6 +1,6 @@
 # Screenshot-driven implementation and verification
 
-2026-11-27 · RetailAtlas · Existing application retained; no Git publication or public deployment.
+2026-11-27 · RetailAtlas · Existing application retained. PR publication subsequently requested by the owner; merging and public deployment remain outside scope.
 
 ## A. Initial state
 
@@ -21,7 +21,7 @@ All `img1.png`–`img15.png` were found in `/mnt/c/Users/sj546/Downloads`, inspe
 | Overview / img1 | Compact title/dataset control; five KPIs; quality left and top pairs right; recent table | Removed duplicate selected-dataset/status/workflow/history panels; real counts and ranked pairs; empty/loading/error states | [Overview](screenshots/overview.png), verified |
 | Datasets / img2 | Master-detail catalog; provenance, quality and four dataset metrics; Upload/Start Mining | Shared/private filters; rename/source download/archive; checksum replaces duplicate date-based version; source metadata remains real | [Datasets](screenshots/datasets.png), verified |
 | Dataset Upload / img3, img9, img10, img12 | Staged form/dropzone left, requirements/examples right | One upload workflow, bounded preview and mapping; no invented datasets, upload queue, formats or progress; actual configured limit | [Upload](screenshots/dataset-upload.png), real CSV/XLSX workflow verified |
-| Mining Configuration / img4 | Dataset/name, three aligned thresholds, advanced itemset size, guide | Existing defaults retained; no permanent job/history panel; actual duplicate-safe submission routes to execution | [Configuration](screenshots/mining-configuration.png), verified |
+| Mining Configuration / img4 | Dataset/name, three aligned thresholds, advanced itemset size, contextual guide | Existing defaults retained; no permanent job/history panel; actual duplicate-safe submission routes to execution | [Configuration](screenshots/mining-configuration.png), verified |
 | Mining Execution / img5 | Selected execution, compact metrics/actions, searchable history | Persisted Queued/Running/Completed/Failed; actual start time; no fake 62%, stages, ETA, queue positions or Cancel | [Execution](screenshots/mining-execution.png), verified; transient-state images explicitly controlled |
 | Association Rules / img6 | Run context, one aligned toolbar, directional table and pagination | Correct totals, multi-product members, server filters; removed dataset selector, duplicate headings and unrelated export | [Rules](screenshots/association-rules.png), verified |
 | Relationship Map / img7 | Context/counts, compact filters, main graph and right-hand evidence | Actual connected groups replace invented categories/edges; undirected links; ten edges/page with total/matching/displayed counts; full names in details/tooltips | [Map](screenshots/product-relationship-map.png), verified |
@@ -81,11 +81,61 @@ Existing verified JWT checks, current-account verification, explicit ownership, 
 
 One bounded scheduler/child remains; no Redis or distributed infrastructure. Admission, locks, concurrency, rate limits, connection-loss recovery, interrupted jobs and watchdog/reaping regressions pass. Worker start timestamp is persisted; polling stops at terminal states. Unexpected worker termination still uses a safe combined interruption/resource-limit explanation; finer worker stage telemetry/cause diagnostics are not claimed.
 
-The owner's connection-error screenshot was reproduced as a stopped local API. A detached loopback backend was restored and Vite's same-origin proxy added. Health returned database/mining availability; unauthenticated protected reads returned 401. A subsequent graceful cold restart preserved the complete record fingerprint; exact timing/count evidence is in the sanitized verification artifact. This fixes local reachability without weakening authentication.
+The owner's connection-error screenshot was reproduced as a stopped local API. A detached loopback backend was restored and Vite's same-origin proxy added. Health returned database/mining availability; unauthenticated protected reads returned 401. A subsequent graceful cold restart preserved the dataset/run summary fingerprint and all table counts; exact timing/count evidence is in the sanitized verification artifact. This fixes local reachability without weakening authentication.
 
 ## G. Before-and-after measurements
 
-<!-- MEASUREMENTS -->
+| Metric | Before | After | Difference | Evidence |
+|---|---:|---:|---|---|
+| Overview: cold API requests | 4 | 4 | +0 requests | Production browser, 3 samples |
+| Overview: warm API requests | 1 | 0 | -1 requests | Production browser, 3 samples |
+| Overview: cold DOM observation | 427.92 ms | 422.61 ms | -5.32 ms | Fixture API/Auth; 3 samples |
+| Overview: warm DOM observation | 48.54 ms | 46.54 ms | -2.00 ms | Cached return; 3 samples |
+| Datasets: cold API requests | 3 | 1 | -2 requests | Production browser, 3 samples |
+| Datasets: warm API requests | 0 | 0 | +0 requests | Production browser, 3 samples |
+| Datasets: cold DOM observation | 400.59 ms | 395.86 ms | -4.73 ms | Fixture API/Auth; 3 samples |
+| Datasets: warm DOM observation | 29.97 ms | 27.89 ms | -2.08 ms | Cached return; 3 samples |
+| Configuration: cold API requests | 3 | 1 | -2 requests | Production browser, 3 samples |
+| Configuration: warm API requests | 0 | 0 | +0 requests | Production browser, 3 samples |
+| Configuration: cold DOM observation | 387.38 ms | 400.82 ms | +13.43 ms | Fixture API/Auth; 3 samples |
+| Configuration: warm DOM observation | 35.85 ms | 33.50 ms | -2.36 ms | Cached return; 3 samples |
+| Rules: cold API requests | 4 | 3 | -1 requests | Production browser, 3 samples |
+| Rules: warm API requests | 1 | 0 | -1 requests | Production browser, 3 samples |
+| Rules: cold DOM observation | 449.20 ms | 429.05 ms | -20.15 ms | Fixture API/Auth; 3 samples |
+| Rules: warm DOM observation | 45.25 ms | 36.74 ms | -8.52 ms | Cached return; 3 samples |
+| Map: cold API requests | 4 | 3 | -1 requests | Production browser, 3 samples |
+| Map: warm API requests | 1 | 0 | -1 requests | Production browser, 3 samples |
+| Map: cold DOM observation | 458.61 ms | 765.91 ms | +307.30 ms | Fixture API/Auth; 3 samples |
+| Map: warm DOM observation | 47.47 ms | 53.88 ms | +6.40 ms | Cached return; 3 samples |
+| Reports: cold API requests | 4 | 3 | -1 requests | Production browser, 3 samples |
+| Reports: warm API requests | 1 | 0 | -1 requests | Production browser, 3 samples |
+| Reports: cold DOM observation | 445.07 ms | 443.78 ms | -1.29 ms | Fixture API/Auth; 3 samples |
+| Reports: warm DOM observation | 41.33 ms | 43.66 ms | +2.33 ms | Cached return; 3 samples |
+| Account: cold API requests | 4 | 1 | -3 requests | Production browser, 3 samples |
+| Account: warm API requests | 1 | 0 | -1 requests | Production browser, 3 samples |
+| Account: cold DOM observation | 419.35 ms | 394.37 ms | -24.98 ms | Fixture API/Auth; 3 samples |
+| Account: warm DOM observation | 51.62 ms | 40.69 ms | -10.92 ms | Cached return; 3 samples |
+| overview: full document height at 1672×941 | 2286 px | 941 px | -1345 px | Same aggregate data; result pages 25 → 10 rows |
+| datasets: full document height at 1672×941 | 1834 px | 941 px | -893 px | Same aggregate data; result pages 25 → 10 rows |
+| association-rules: full document height at 1672×941 | 3114 px | 1122 px | -1992 px | Same aggregate data; result pages 25 → 10 rows |
+| product-relationship-map: full document height at 1672×941 | 1940 px | 1089 px | -851 px | Same aggregate data; result pages 25 → 10 rows |
+| reports: full document height at 1672×941 | 4419 px | 1577 px | -2842 px | Same aggregate data; result pages 25 → 10 rows |
+| UCI pipeline mining median | 1.797 s | 1.831 s | +0.034 s | 3 fresh full-data children |
+| Fresh pipeline child peak RSS median | 314.812 MiB | 315.008 MiB | +0.195 MiB | 3 fresh full-data children |
+| Backend + pipeline child sampled RSS | Unavailable: baseline PID exited | 424.00 MiB median | No comparable difference | RSS sum can double-count shared pages |
+| Synthetic CSV: preview / upload+processing | Not implemented | 969.10 / 3287.43 ms | New workflow, no speed comparison | One real browser/API sample; 120 rows |
+| Synthetic XLSX: preview / upload+processing | Not implemented | 1111.76 / 4157.45 ms | New workflow, no speed comparison | One real browser/API sample; 120 rows |
+| Initial entry JS | 492.70 kB | 494.52 kB | +1.82 kB | Configured builds; uncompressed; old values rounded by Vite |
+| Private shell JS | 121.59 kB | 147.68 kB | +26.09 kB | Configured builds; uncompressed; old values rounded by Vite |
+| CSS | 41.47 kB | 62.12 kB | +20.65 kB | Configured builds; uncompressed; old values rounded by Vite |
+| Cold API startup to DB+worker health | Unmeasured | 8.50 s | No speed comparison | One graceful restart; record fingerprint unchanged |
+| Real remote Auth/API latency, isolated graph CPU/render time, full upload throughput, live dataset/run search latency | Unmeasured this run | Unmeasured separately | No invented comparison | Local query/browser observations reported separately |
+
+[Sanitized measurements](verification/redesign-measurements.json) retain raw samples, conditions, query counts and history EXPLAIN ANALYZE plan. Cold/warm browser observations use the same Chromium, 1672×941 viewport, uncompressed production assets, fresh cold contexts and controlled Auth/API. Warm measurements exclude a settling wait for the previous SPA page so its requests are not incorrectly attributed to Account. Three samples support medians, not reliable p95 estimates. Mining uses all 20,728 original baskets and identical .02/.50/1/max-3 thresholds. Counts and result digest are identical before/after (`c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e`).
+
+Local PostgreSQL query benchmark: 10 datasets, 10,001 runs, 3,829 products, seven samples/read; Auth network excluded. Catalog/summary/history/status/rules/report retain 2/2/3/2/5/6 statements respectively (including identity setup). Observed median endpoint latencies changed, but SQL shape/counts are unchanged; no causal query-speed improvement is claimed. No live Supabase EXPLAIN ANALYZE or destructive analysis was performed.
+
+New modules and richer UI have a bundle/cold-render cost. A measured workspace module waterfall was removed by keeping common workspace pages in the private shell; graph/account/upload/result modules stay scoped. Warm API traffic and page density improved, while the map's richer initial layout may take longer. Timings were collected on a developer machine with other activity and are observations, not hosting capacity guarantees. Raw HTTP payload size, query-only server execution beyond the recorded history plan, full-file throughput and rendering-only CPU were not separately benchmarked.
 
 ## H. Regression and edge cases
 
@@ -99,6 +149,7 @@ The owner's connection-error screenshot was reproduced as a stopped local API. A
 | Run selector returned a stale selection after dismissal | Resolve a delayed selection after Escape | Abort controller, query cache and late-response guard; targeted test passes |
 | Filtered selector keyboard index pointed beyond new rows | Failing-before regression: select last row, narrow to one, press Enter | Reset/clamp index and guard missing rows; same test passes after fix |
 | Saved result URL did not resolve dataset before Overview | Failing-before regression: reload a run link while another dataset is newest | Resolve dataset from explicit authorized run; dataset-switch stale-stat guard remains |
+| Hash-based skip link changed the current route | Keyboard activation on a result/dataset page | Prevent default anchor navigation, focus current main content; regression and browser keyboard check pass |
 | Rank text/route-action transitions failed contrast | Axe audited dark/light navigation | Accessible rank text and non-reused page action/reduced-motion transitions; 18 page/theme audits pass |
 | Slow/corrupt/expanding upload could monopolize resources | Actual oversized zip and timed slow stream tests | Bounded source/expanded size, timeout, semaphore, child limits and defused XML; safe failures and cleanup |
 | Prior graph labels/leader lines were unreadable | Baseline actual graph screenshot | Real connected groups, collision correction, bounded pages, details/tooltips; browser edge/keyboard/zoom/pan assertions |
@@ -137,7 +188,32 @@ Real Queued admission, Running transition, completion, watchdog/restart failure 
 
 ## K. Final verification
 
-<!-- VERIFICATION -->
+| Check / exact command | Final result |
+|---|---|
+| `cd backend && DATABASE_URL=postgresql+psycopg://sanket@127.0.0.1:55432/postgres MIGRATION_DATABASE_URL=postgresql+psycopg://sanket@127.0.0.1:55432/postgres ../.venv/bin/pytest -q` | 53 passed; one TestClient deprecation warning; uniquely generated schemas/roles only |
+| `npm --prefix frontend test` | 43 passed across 8 files |
+| `npm --prefix frontend run build` | Passed; configured production asset sizes above |
+| `cd frontend && LD_LIBRARY_PATH=/tmp/ojt-browser-libs/extracted/usr/lib/x86_64-linux-gnu npx playwright test --config playwright.platform.config.js` | 5 scenarios passed; nine pages × six widths, 18 page/theme accessibility audits, account isolation, overlays, graph, Auth fixtures and lifecycle fixtures |
+| Same environment with `--config playwright.upload.config.js` | 3 scenarios passed; real CSV/XLSX API/worker workflows and invalid-file preservation; controlled Auth |
+| `npm --prefix frontend audit --audit-level=moderate` | 0 known vulnerabilities |
+| `/tmp/ojt-audit/bin/pip-audit -r backend/requirements.lock --format json --output test-results/redesign/after/pip-audit.json` | No known vulnerabilities |
+| `.venv/bin/pip check` | No broken requirements |
+| `.venv/bin/ruff check --isolated --select E4,E7,E9,F,I backend` | Passed |
+| `cd backend && ../.venv/bin/alembic current` / `upgrade head` | 006; isolated preservation test passed before additive application |
+| `.venv/bin/python backend/scripts/check_db.py` | SELECT 1 and verified TLS passed |
+| `DATABASE_URL=<same-disposable-loopback-url> MIGRATION_DATABASE_URL=<same-url> PYTHONPATH=backend .venv/bin/python backend/scripts/benchmark_queries.py test-results/redesign/after/queries.json` | Real PostgreSQL samples/counts/EXPLAIN collected without modifying application tables |
+| `OJT_BACKEND_PID=<verified-running-pid> OJT_BENCH_SAMPLES=3 PYTHONPATH=backend .venv/bin/python backend/scripts/benchmark_mining.py test-results/redesign/after/mining.json` | Three full-data repeat counts/digests/RSS samples |
+| `cd frontend && LD_LIBRARY_PATH=<same-browser-libraries> node scripts/benchmark-pages.mjs /tmp/retailatlas-baseline/frontend/dist /tmp/retailatlas-dist-after ../test-results/redesign/after/pages-controlled.json` | Cold/warm page measurements; frozen pre-change source versus final implementation |
+| Local detached API cold startup and `GET /api/v1/health` through Vite | DB+worker healthy; original record fingerprint identical before/after restart |
+| Protected read without session and direct Vite artifact-file request | 401 / 403 respectively |
+| Build private-value scan; Markdown/image paths; `git diff --check`; ignore-rule review | Passed; nine README screenshot paths exist; curated images/examples publishable, secrets/artifacts ignored |
+
+The local PostgreSQL URL above has no password and identifies the existing disposable test server, not Supabase. No live owner/migration URL, account password, access token or privileged key appears in documentation or logs. Test infrastructure paths such as `/tmp/ojt-browser-libs` are environment-specific, not required application directories.
+
+Failed intermediate attempts remain described: initial wrong-working-directory invocations, extensionless XLSX staging, StrictMode cache cleanup, stale selector index, reopened-run dataset context, contrast transitions, mobile header overflow, and an SPA benchmark attribution error. They were corrected; no valid test assertion was removed to obtain a passing result. Transient failures while source/CSS changed during a browser run were rerun against the final stable files.
+
+During verification, an external workspace update advanced HEAD to `a84a1f9` (followed by `c9936b3`) and compacted headings/guidance into contextual help. The owner confirmed those edits should remain intact. Those changes were preserved and retested; the mobile breadcrumb overflow was fixed. No commit, push, PR or deployment command had been executed by this agent at that verification checkpoint. The subsequent owner request to open a pull request authorizes the necessary branch publication and PR creation, without merging or deployment. The legacy live-credential browser tests were updated for the nine routes and syntax-checked; they were not run without credentials. The current compact header/help arrangement intentionally differs from the initial guide-card references in that concurrent update.
+
 
 A separate manual review pass checked API/schema compatibility, dataset provenance/ownership, upload cleanup/resources, idempotency, stale selections, graph semantics, cache isolation and publication candidates. This is an engineering review, not an external penetration test or independent third-party certification.
 
@@ -150,3 +226,7 @@ Remaining limitations/external work:
 - Complete long workbook/product/graph permutations, every browser/assistive technology and every infrastructure failure were not exhaustively tested. One HTTPX/Starlette TestClient deprecation warning remains; assertions were not weakened to hide it.
 
 Local implementation and listed checks are complete only to the evidence stated above. Hosting/email/second-live-account checks remain explicitly Pending/Blocked; existing data, secrets, history and owner publication control are preserved.
+
+### PR handoff checkpoint
+
+The owner later requested “open pull request”. Preserve the concurrent compact-header/action/sidebar commits already merged through PR #35; publish the remaining QA regressions, browser captures and sanitized measurement evidence against `main`. The measurement table records the benchmark snapshot, before the last owner sidebar transition adjustment. A fresh production build after that adjustment passed: 64.12 kB CSS, 494.52 kB entry JavaScript and 148.25 kB private-shell JavaScript (uncompressed Vite output). Frontend tests were repeated: 43 passed across eight files; the five platform Playwright scenarios passed again in 41.1 seconds, refreshing the curated captures after the sidebar change. Earlier no-publication statements describe the pre-request checkpoint. No merge or deployment is authorized.

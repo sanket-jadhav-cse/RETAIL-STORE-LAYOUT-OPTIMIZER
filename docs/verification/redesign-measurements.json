@@ -1,0 +1,1525 @@
+{
+  "browser": {
+    "conditions": "Chromium 1672x941, uncompressed production assets, identical aggregate fixture and mocked Auth/API; three samples per page, fresh context per cold entry, same-context return navigation while cache fresh. Timings are browser observations, not real PostgreSQL/Supabase latency.",
+    "before": {
+      "overview": [
+        {
+          "cold_ms": 444.364422,
+          "warm_ms": 53.26822600000014,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs"
+          ],
+          "dimensions": {
+            "height": 2286,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 424.236762,
+          "warm_ms": 48.536497000000054,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs"
+          ],
+          "dimensions": {
+            "height": 2286,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 427.92464900000004,
+          "warm_ms": 38.818787999999586,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs"
+          ],
+          "dimensions": {
+            "height": 2286,
+            "width": 1672
+          }
+        }
+      ],
+      "datasets": [
+        {
+          "cold_ms": 400.58890599999995,
+          "warm_ms": 28.652578999999605,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1834,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 394.2273690000002,
+          "warm_ms": 29.96916599999986,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1834,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 403.0709960000004,
+          "warm_ms": 45.46392899999955,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1834,
+            "width": 1672
+          }
+        }
+      ],
+      "mining-configuration": [
+        {
+          "cold_ms": 417.68407300000035,
+          "warm_ms": 38.43823500000144,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1218,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 387.3839250000001,
+          "warm_ms": 30.006280999999944,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1218,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 385.3731079999998,
+          "warm_ms": 35.85391100000015,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1218,
+            "width": 1672
+          }
+        }
+      ],
+      "association-rules": [
+        {
+          "cold_ms": 449.2010870000013,
+          "warm_ms": 45.25316399999974,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "dimensions": {
+            "height": 3114,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 502.8073349999995,
+          "warm_ms": 55.26414300000033,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "dimensions": {
+            "height": 3114,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 441.07895700000154,
+          "warm_ms": 41.53808999999819,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "dimensions": {
+            "height": 3114,
+            "width": 1672
+          }
+        }
+      ],
+      "product-relationship-map": [
+        {
+          "cold_ms": 421.17548499999975,
+          "warm_ms": 42.67562799999723,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "dimensions": {
+            "height": 1940,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 468.9905919999983,
+          "warm_ms": 48.56623000000036,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "dimensions": {
+            "height": 1940,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 458.60827000000063,
+          "warm_ms": 47.470478999999614,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "dimensions": {
+            "height": 1940,
+            "width": 1672
+          }
+        }
+      ],
+      "reports": [
+        {
+          "cold_ms": 445.0694590000021,
+          "warm_ms": 38.335666999999376,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "dimensions": {
+            "height": 4419,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 442.7617339999997,
+          "warm_ms": 48.91935300000114,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "dimensions": {
+            "height": 4419,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 464.78927199999816,
+          "warm_ms": 41.328646000001754,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "dimensions": {
+            "height": 4419,
+            "width": 1672
+          }
+        }
+      ],
+      "account": [
+        {
+          "cold_ms": 419.34635100000014,
+          "warm_ms": 47.94802200000049,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/account",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/account"
+          ],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 454.0830980000028,
+          "warm_ms": 54.82056899999952,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/account",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/account"
+          ],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 415.8712999999989,
+          "warm_ms": 51.616838000001735,
+          "cold_requests": 4,
+          "warm_requests": 1,
+          "cold_paths": [
+            "/api/v1/account",
+            "/api/v1/datasets",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [
+            "/api/v1/account"
+          ],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ]
+    },
+    "after": {
+      "overview": [
+        {
+          "cold_ms": 445.501437,
+          "warm_ms": 55.82405999999992,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 421.095151,
+          "warm_ms": 46.53895599999987,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 422.6074249999997,
+          "warm_ms": 32.650963999999476,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ],
+      "datasets": [
+        {
+          "cold_ms": 394.1650870000003,
+          "warm_ms": 34.79872499999965,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 395.8598579999998,
+          "warm_ms": 27.88989599999877,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 406.55360400000063,
+          "warm_ms": 24.3847339999993,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ],
+      "mining-configuration": [
+        {
+          "cold_ms": 400.81774699999914,
+          "warm_ms": 29.76692699999876,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 400.4446910000006,
+          "warm_ms": 53.36425099999906,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 408.6257399999995,
+          "warm_ms": 33.49671900000067,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ],
+      "mining-execution": [
+        {
+          "cold_ms": 423.66044800000054,
+          "warm_ms": 37.669528999998874,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 426.5986710000034,
+          "warm_ms": 32.775172000001476,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 435.03814799999964,
+          "warm_ms": 35.059925000001385,
+          "cold_requests": 4,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/datasets",
+            "/api/v1/runs",
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ],
+      "association-rules": [
+        {
+          "cold_ms": 427.97095799999806,
+          "warm_ms": 36.11644800000067,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1122,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 433.7841550000012,
+          "warm_ms": 36.73768899999777,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1122,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 429.05021900000065,
+          "warm_ms": 44.07452800000101,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/rules"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1122,
+            "width": 1672
+          }
+        }
+      ],
+      "product-relationship-map": [
+        {
+          "cold_ms": 765.9085210000012,
+          "warm_ms": 64.19635700000072,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1089,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 772.1266840000026,
+          "warm_ms": 52.138223000001744,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1089,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 725.613233,
+          "warm_ms": 53.87535100000241,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/adjacencies"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1089,
+            "width": 1672
+          }
+        }
+      ],
+      "reports": [
+        {
+          "cold_ms": 456.9681649999984,
+          "warm_ms": 43.662152000004426,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1577,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 443.7821330000006,
+          "warm_ms": 41.803696999995736,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1577,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 443.59003400000074,
+          "warm_ms": 49.951693000002706,
+          "cold_requests": 3,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/runs",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201",
+            "/api/v1/runs/00000000-0000-4000-8000-000000000201/report"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 1577,
+            "width": 1672
+          }
+        }
+      ],
+      "account": [
+        {
+          "cold_ms": 392.2756440000012,
+          "warm_ms": 40.694203999999445,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/account"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 394.3682740000004,
+          "warm_ms": 44.52803100000165,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/account"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 395.55725299999904,
+          "warm_ms": 27.89320900000166,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/account"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ],
+      "dataset-upload": [
+        {
+          "cold_ms": 394.61704499999905,
+          "warm_ms": 43.678429999999935,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/upload-config"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 393.7814340000041,
+          "warm_ms": 49.15641300000425,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/upload-config"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        },
+        {
+          "cold_ms": 407.18724899999506,
+          "warm_ms": 34.27047399999719,
+          "cold_requests": 1,
+          "warm_requests": 0,
+          "cold_paths": [
+            "/api/v1/upload-config"
+          ],
+          "warm_paths": [],
+          "dimensions": {
+            "height": 941,
+            "width": 1672
+          }
+        }
+      ]
+    }
+  },
+  "queries_before": {
+    "context": "Disposable local PostgreSQL, 10 datasets, 10,001 runs (101 for target owner), 3829 products, actual rule/pair metrics with synthetic itemsets/product padding; Auth provider network excluded",
+    "api": {
+      "/datasets": {
+        "samples_ms": [
+          48.66258399852086,
+          18.00002699746983,
+          13.198025997553486,
+          14.213768001354765,
+          12.969465999049135,
+          14.795962000789586,
+          14.055554005608428
+        ],
+        "median_ms": 14.213768001354765,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/datasets/{id}/summary": {
+        "samples_ms": [
+          9.38371099618962,
+          11.573437004699372,
+          12.860044997069053,
+          10.026250005466864,
+          14.28757300163852,
+          10.410164002678357,
+          13.354980997974053
+        ],
+        "median_ms": 11.573437004699372,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/runs?search=Scale": {
+        "samples_ms": [
+          21.660876998794265,
+          15.33068300341256,
+          20.737712999107316,
+          20.04464499623282,
+          20.063206997292582,
+          21.907832997385412,
+          20.5955540004652
+        ],
+        "median_ms": 20.5955540004652,
+        "query_counts": [
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3
+        ]
+      },
+      "/runs/{id}": {
+        "samples_ms": [
+          17.055979995348025,
+          13.30404599866597,
+          14.861247997032478,
+          14.525496997521259,
+          13.988999002322089,
+          13.704320997931063,
+          15.523654998105485
+        ],
+        "median_ms": 14.525496997521259,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/runs/{id}/rules": {
+        "samples_ms": [
+          21.832474005350377,
+          22.511723997013178,
+          21.29701100056991,
+          25.915089005138725,
+          24.617827002657577,
+          24.731564000830986,
+          19.164249002642464
+        ],
+        "median_ms": 22.511723997013178,
+        "query_counts": [
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5
+        ]
+      },
+      "/runs/{id}/report": {
+        "samples_ms": [
+          25.18028800113825,
+          20.575904003635515,
+          27.571651997277513,
+          16.481931997986976,
+          17.930984002305195,
+          20.18246499937959,
+          23.102234001271427
+        ],
+        "median_ms": 20.575904003635515,
+        "query_counts": [
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6
+        ]
+      }
+    },
+    "history_plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 55.51,
+          "Total Cost": 55.55,
+          "Plan Rows": 16,
+          "Plan Width": 24,
+          "Actual Startup Time": 0.179,
+          "Actual Total Time": 0.182,
+          "Actual Rows": 20,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 104,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 55.51,
+              "Total Cost": 55.55,
+              "Plan Rows": 16,
+              "Plan Width": 24,
+              "Actual Startup Time": 0.178,
+              "Actual Total Time": 0.179,
+              "Actual Rows": 20,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "created_at DESC",
+                "run_id DESC"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 26,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 104,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Bitmap Heap Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "runs",
+                  "Alias": "runs",
+                  "Startup Cost": 4.4,
+                  "Total Cost": 55.19,
+                  "Plan Rows": 16,
+                  "Plan Width": 24,
+                  "Actual Startup Time": 0.036,
+                  "Actual Total Time": 0.157,
+                  "Actual Rows": 101,
+                  "Actual Loops": 1,
+                  "Recheck Cond": "(owner_id = '00000000-0000-0000-0000-000000000001'::uuid)",
+                  "Rows Removed by Index Recheck": 0,
+                  "Exact Heap Blocks": 101,
+                  "Lossy Heap Blocks": 0,
+                  "Shared Hit Blocks": 104,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "Bitmap Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Index Name": "ix_runs_owner_created",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 4.4,
+                      "Plan Rows": 16,
+                      "Plan Width": 0,
+                      "Actual Startup Time": 0.019,
+                      "Actual Total Time": 0.02,
+                      "Actual Rows": 101,
+                      "Actual Loops": 1,
+                      "Index Cond": "(owner_id = '00000000-0000-0000-0000-000000000001'::uuid)",
+                      "Shared Hit Blocks": 3,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.13,
+        "Triggers": [],
+        "Execution Time": 0.212
+      }
+    ]
+  },
+  "queries_after": {
+    "context": "Disposable local PostgreSQL, 10 datasets, 10,001 runs (101 for target owner), 3829 products, actual rule/pair metrics with synthetic itemsets/product padding; Auth provider network excluded",
+    "api": {
+      "/datasets": {
+        "samples_ms": [
+          21.57087899831822,
+          8.17520899727242,
+          7.2085819992935285,
+          8.15827999758767,
+          7.788645998516586,
+          8.031755001866259,
+          7.035311005893163
+        ],
+        "median_ms": 8.031755001866259,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/datasets/{id}/summary": {
+        "samples_ms": [
+          7.556083000963554,
+          7.157100997574162,
+          7.0262330045807175,
+          6.805917997553479,
+          6.853250997664873,
+          7.102102004864719,
+          6.660263999947347
+        ],
+        "median_ms": 7.0262330045807175,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/runs?search=Scale": {
+        "samples_ms": [
+          16.34863799699815,
+          11.36601400503423,
+          11.383853998268023,
+          9.655195004597772,
+          10.080997002660297,
+          12.573858002724592,
+          13.073965994408354
+        ],
+        "median_ms": 11.383853998268023,
+        "query_counts": [
+          3,
+          3,
+          3,
+          3,
+          3,
+          3,
+          3
+        ]
+      },
+      "/runs/{id}": {
+        "samples_ms": [
+          14.68842799658887,
+          10.724292995291762,
+          10.007785000198055,
+          10.744849998445716,
+          8.665451998240314,
+          10.930361000646371,
+          11.57610800146358
+        ],
+        "median_ms": 10.744849998445716,
+        "query_counts": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "/runs/{id}/rules": {
+        "samples_ms": [
+          25.01940799993463,
+          17.779369998606853,
+          14.482744998531416,
+          16.87491199845681,
+          16.59865900001023,
+          14.734741002030205,
+          13.663869998708833
+        ],
+        "median_ms": 16.59865900001023,
+        "query_counts": [
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5
+        ]
+      },
+      "/runs/{id}/report": {
+        "samples_ms": [
+          20.933483996486757,
+          17.86770799662918,
+          16.841312004544307,
+          16.694578000169713,
+          16.1858889987343,
+          21.011980999901425,
+          17.629935995501
+        ],
+        "median_ms": 17.629935995501,
+        "query_counts": [
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6
+        ]
+      }
+    },
+    "history_plan": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 52.7,
+          "Total Cost": 52.74,
+          "Plan Rows": 15,
+          "Plan Width": 24,
+          "Actual Startup Time": 0.159,
+          "Actual Total Time": 0.162,
+          "Actual Rows": 20,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 104,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Sort",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Startup Cost": 52.7,
+              "Total Cost": 52.74,
+              "Plan Rows": 15,
+              "Plan Width": 24,
+              "Actual Startup Time": 0.158,
+              "Actual Total Time": 0.16,
+              "Actual Rows": 20,
+              "Actual Loops": 1,
+              "Sort Key": [
+                "created_at DESC",
+                "run_id DESC"
+              ],
+              "Sort Method": "top-N heapsort",
+              "Sort Space Used": 26,
+              "Sort Space Type": "Memory",
+              "Shared Hit Blocks": 104,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0,
+              "Plans": [
+                {
+                  "Node Type": "Bitmap Heap Scan",
+                  "Parent Relationship": "Outer",
+                  "Parallel Aware": false,
+                  "Async Capable": false,
+                  "Relation Name": "runs",
+                  "Alias": "runs",
+                  "Startup Cost": 4.4,
+                  "Total Cost": 52.41,
+                  "Plan Rows": 15,
+                  "Plan Width": 24,
+                  "Actual Startup Time": 0.032,
+                  "Actual Total Time": 0.139,
+                  "Actual Rows": 101,
+                  "Actual Loops": 1,
+                  "Recheck Cond": "(owner_id = '00000000-0000-0000-0000-000000000001'::uuid)",
+                  "Rows Removed by Index Recheck": 0,
+                  "Exact Heap Blocks": 101,
+                  "Lossy Heap Blocks": 0,
+                  "Shared Hit Blocks": 104,
+                  "Shared Read Blocks": 0,
+                  "Shared Dirtied Blocks": 0,
+                  "Shared Written Blocks": 0,
+                  "Local Hit Blocks": 0,
+                  "Local Read Blocks": 0,
+                  "Local Dirtied Blocks": 0,
+                  "Local Written Blocks": 0,
+                  "Temp Read Blocks": 0,
+                  "Temp Written Blocks": 0,
+                  "Plans": [
+                    {
+                      "Node Type": "Bitmap Index Scan",
+                      "Parent Relationship": "Outer",
+                      "Parallel Aware": false,
+                      "Async Capable": false,
+                      "Index Name": "ix_runs_owner_created",
+                      "Startup Cost": 0.0,
+                      "Total Cost": 4.39,
+                      "Plan Rows": 15,
+                      "Plan Width": 0,
+                      "Actual Startup Time": 0.016,
+                      "Actual Total Time": 0.016,
+                      "Actual Rows": 101,
+                      "Actual Loops": 1,
+                      "Index Cond": "(owner_id = '00000000-0000-0000-0000-000000000001'::uuid)",
+                      "Shared Hit Blocks": 3,
+                      "Shared Read Blocks": 0,
+                      "Shared Dirtied Blocks": 0,
+                      "Shared Written Blocks": 0,
+                      "Local Hit Blocks": 0,
+                      "Local Read Blocks": 0,
+                      "Local Dirtied Blocks": 0,
+                      "Local Written Blocks": 0,
+                      "Temp Read Blocks": 0,
+                      "Temp Written Blocks": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 1,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.119,
+        "Triggers": [],
+        "Execution Time": 0.189
+      }
+    ]
+  },
+  "mining_before": [
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.5856284080000478,
+      "load_seconds": 0.04705353199824458,
+      "mining_seconds": 1.8303388269996503,
+      "wall_seconds": 3.4630207669979427,
+      "peak_rss_mb": 314.7890625,
+      "sampled_backend_plus_child_rss_mb": null
+    },
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.3125420570067945,
+      "load_seconds": 0.03689375099929748,
+      "mining_seconds": 1.7176138029972208,
+      "wall_seconds": 3.0670496110033127,
+      "peak_rss_mb": 314.8125,
+      "sampled_backend_plus_child_rss_mb": null
+    },
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.1745411349984352,
+      "load_seconds": 0.03202601399971172,
+      "mining_seconds": 1.7969867799984058,
+      "wall_seconds": 3.0035539289965527,
+      "peak_rss_mb": 314.8828125,
+      "sampled_backend_plus_child_rss_mb": null
+    }
+  ],
+  "mining_after": [
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.6402509240069776,
+      "load_seconds": 0.053993716996046714,
+      "mining_seconds": 2.2163573389989324,
+      "wall_seconds": 3.9106019800019567,
+      "peak_rss_mb": 314.7109375,
+      "sampled_backend_plus_child_rss_mb": 406.69921875
+    },
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.1741658589962753,
+      "load_seconds": 0.033013683001627214,
+      "mining_seconds": 1.8305927460023668,
+      "wall_seconds": 3.0377722880002693,
+      "peak_rss_mb": 315.0078125,
+      "sampled_backend_plus_child_rss_mb": 423.99609375
+    },
+    {
+      "baskets": 20728,
+      "products": 3829,
+      "counts": [
+        358,
+        52,
+        38
+      ],
+      "sha256": "c548a51eae0b45cb9696eb3d8d216b1eabe6c4bc2dcaeacb7ece15a6d6c09f7e",
+      "import_seconds": 1.283671602999675,
+      "load_seconds": 0.03433713500271551,
+      "mining_seconds": 1.7409031669958495,
+      "wall_seconds": 3.05891190499824,
+      "peak_rss_mb": 315.21875,
+      "sampled_backend_plus_child_rss_mb": 424.0234375
+    }
+  ],
+  "startup": {
+    "startup_to_healthy_seconds": 8.503498952006339,
+    "before": {
+      "counts": {
+        "datasets": 2,
+        "runs": 12,
+        "products": 3832,
+        "rules": 514,
+        "adjacencies": 376
+      },
+      "fingerprint": "4e9d36fe82040719db6d0e064f895975bf28572cef3809707f84de1273eafa9a"
+    },
+    "after": {
+      "counts": {
+        "datasets": 2,
+        "runs": 12,
+        "products": 3832,
+        "rules": 514,
+        "adjacencies": 376
+      },
+      "fingerprint": "4e9d36fe82040719db6d0e064f895975bf28572cef3809707f84de1273eafa9a"
+    },
+    "health": {
+      "status": "ok",
+      "mining_available": true
+    },
+    "record_snapshot_preserved": true,
+    "fingerprint_scope": "Dataset identifiers/checksums/basket counts/summaries and run identifiers/dataset/status/execution; plus all five table counts. Not a hash of every individual product/rule/adjacency field."
+  },
+  "upload_csv": [
+    {
+      "path": "/api/v1/datasets/preview",
+      "elapsed_ms": 969.0968180000004
+    },
+    {
+      "path": "/api/v1/datasets",
+      "elapsed_ms": 3287.4268849999994
+    },
+    {
+      "path": "/api/v1/runs",
+      "elapsed_ms": 30.293547000000217
+    }
+  ],
+  "upload_xlsx": [
+    {
+      "path": "/api/v1/datasets/preview",
+      "elapsed_ms": 1111.762236999999
+    },
+    {
+      "path": "/api/v1/datasets",
+      "elapsed_ms": 4157.450502
+    },
+    {
+      "path": "/api/v1/runs",
+      "elapsed_ms": 21.967608000002656
+    }
+  ]
+}

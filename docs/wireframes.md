@@ -1,3 +1,5 @@
+> Historical design/demo notes. For the current nine-page application and verified commands, use [the improvement report](improvement-report.md) and [README](../README.md).
+
 # Screen designs
 Shared responsive shell: dark left navigation (wrapped top navigation on narrow screens), page title, refresh action, dataset selector and persisted-run selector. White evidence panels, teal actions, explicit status/error/empty messages. Labels and keyboard focus remain visible.
 

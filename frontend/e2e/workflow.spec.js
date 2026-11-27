@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { signIn, navigate } from "./auth-helpers";
-test("actual Supabase data across all six screens", async ({ page }) => {
+test("actual Supabase data across all nine screens", async ({ page }) => {
   test.setTimeout(240000);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await signIn(page, { loadRun: false });
-  await navigate(page, "Mining");
+  await navigate(page, "Mining Configuration");
   await page
     .getByLabel("Run name (optional)")
     .fill("Baseline Market Basket Analysis");
@@ -18,9 +18,7 @@ test("actual Supabase data across all six screens", async ({ page }) => {
     .getByRole("button", { name: "Run FP-Growth", exact: true })
     .click();
   expect((await submitted).status()).toBe(202);
-  await expect(
-    page.getByText("Completed", { exact: true }).first(),
-  ).toBeVisible({ timeout: 90000 });
+  await expect(page.locator(".execution-panel .status")).toHaveText("Completed", {timeout:90000});
   await navigate(page, "Overview");
   await expect(page.getByText("20,728", { exact: true })).toBeVisible({
     timeout: 30000,
@@ -30,9 +28,9 @@ test("actual Supabase data across all six screens", async ({ page }) => {
   });
   await page.getByRole("button", { name: "Datasets", exact: true }).click();
   await expect(
-    page.getByRole("cell", { name: "541,909", exact: true }),
+    page.getByText("541,909", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Mining", exact: true }).click();
+  await page.getByRole("button", { name: "Mining Configuration", exact: true }).click();
   await expect(page.getByLabel("Minimum support")).toHaveValue("0.02");
   await page
     .getByRole("button", { name: "Association Rules", exact: true })
@@ -44,7 +42,7 @@ test("actual Supabase data across all six screens", async ({ page }) => {
     page.getByRole("cell", { name: /PINK REGENCY TEACUP AND SAUCER/ }).first(),
   ).toBeVisible({ timeout: 30000 });
   await page
-    .getByRole("button", { name: "Product Layout", exact: true })
+    .getByRole("button", { name: "Product Relationship Map", exact: true })
     .click();
   await expect(
     page.getByRole("group", { name: "Product adjacency graph" }),
@@ -57,17 +55,17 @@ test("actual Supabase data across all six screens", async ({ page }) => {
   await expect(page.getByText(/Co-purchased in/)).toBeVisible();
   await page.getByRole("button", { name: "Reports", exact: true }).click();
   await expect(
-    page.getByText("Recommendation evidence", { exact: true }),
+    page.locator(".recommendation-table"),
   ).toBeVisible({ timeout: 30000 });
   const download = page.waitForEvent("download");
   await page
-    .getByRole("button", { name: "Export complete CSV report" })
+    .getByRole("button", { name: "Export complete CSV" })
     .click();
   expect((await download).suggestedFilename()).toMatch(/^recommendations-/);
   await page.setViewportSize({ width: 390, height: 844 });
   await navigate(page, "Reports");
   await expect(
-    page.getByRole("heading", { name: "Reports", exact: true }),
+    page.getByRole("heading", { name: "Layout Recommendation Report", exact: true }),
   ).toBeVisible();
   await page.reload();
   await expect(

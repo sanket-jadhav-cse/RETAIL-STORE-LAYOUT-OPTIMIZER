@@ -195,6 +195,8 @@ it("resets keyboard selection when a filtered result list becomes shorter", asyn
       screen.queryByRole("option", { name: /Second analysis/ }),
     ).not.toBeInTheDocument(),
   );
+  await screen.findByRole("option", {name:/Baseline Market Basket/});
+  await waitFor(() => expect(screen.queryByLabelText("Loading previous runs")).not.toBeInTheDocument());
   fireEvent.keyDown(input, { key: "Enter" });
   await waitFor(() => expect(selected).toHaveBeenCalledWith(first));
 });

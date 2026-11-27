@@ -3,9 +3,11 @@ import { expect } from "@playwright/test";
 export const pages = [
   "Overview",
   "Datasets",
-  "Mining",
+  "Dataset Upload",
+  "Mining Configuration",
+  "Mining Execution",
   "Association Rules",
-  "Product Layout",
+  "Product Relationship Map",
   "Reports",
 ];
 
@@ -20,7 +22,7 @@ export async function navigate(page, name) {
     if (!(await button.isVisible())) await trigger.click();
   }
   await button.click();
-  await expect(page.getByText("Loading data…", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("status", { name: "Loading page" })).toHaveCount(0);
 }
 
 export async function signIn(page, { loadRun = true } = {}) {
@@ -34,11 +36,13 @@ export async function signIn(page, { loadRun = true } = {}) {
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByText("20,728", { exact: true })).toBeVisible({
-    timeout: 45000,
-  });
+  await expect(page.getByRole("heading",{level:1})).toBeVisible({timeout:45000});
+  const dataset = page.getByRole("button",{name:"Dataset",exact:true});
+  await dataset.click();
+  await page.getByRole("option",{name:/UCI Online Retail Dataset/}).click();
+  await expect(page.getByText("20,728", { exact: true })).toBeVisible({timeout:45000});
   if (loadRun) {
-    await navigate(page, "Mining");
+    await navigate(page, "Association Rules");
     await page
       .getByRole("button", { name: "Load a previous run", exact: true })
       .click();

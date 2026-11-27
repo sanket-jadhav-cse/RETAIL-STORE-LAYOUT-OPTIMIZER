@@ -1,6 +1,6 @@
 # Screenshot-driven nine-page implementation — active 2026-11-27
 
-This ledger supersedes historical completion/publication permissions below. **No commits, pushes, PRs, paid provisioning, or public deployment.** Existing records and FP-Growth semantics are preserved.
+This ledger supersedes historical completion/publication permissions below. The owner subsequently requested **“open pull request”**, authorizing the necessary commit, branch publication and PR creation. Merging, paid provisioning and public deployment remain outside scope. Existing records, concurrent owner edits and FP-Growth semantics are preserved.
 
 | Work | Status | Acceptance / evidence |
 |---|---|---|
@@ -8,15 +8,15 @@ This ledger supersedes historical completion/publication permissions below. **No
 | Inspect all approved references | Completed | `img1.png` through `img15.png` in Downloads; all RetailAtlas, English; mapping below |
 | Baseline screenshots, tests, build and measurements | Completed | Actual Chromium captures and isolated PostgreSQL benchmark in `test-results/redesign/before`; retain results before source changes |
 | Nine routes, reusable shell and page ownership | Completed | Exactly eight workspace links plus Account; legacy #mining preserved; no global feature controls |
-| Server state and request performance | In Progress | TanStack Query, scoped keys, abort, cache, lazy pages, terminal polling stop; Account zero dataset/run calls |
+| Server state and request performance | Completed | TanStack Query, scoped keys, abort, cache, lazy pages, terminal polling stop; Account zero dataset/run calls |
 | CSV/XLSX upload, mapping, storage, dataset actions | Completed | Bounded content validation, private durable DATA_DIR, atomic writes, owner scoped duplicates; no paid storage |
 | Configuration / execution split | Completed | Persist request then navigate; truthful lifecycle; searchable paginated history; retry and duplicate protection |
 | Compact overview / rules / reports | Completed | Five KPIs; actual top three; recent table; run-only results context; one toolbar; complete CSV semantics |
-| Connected graph layout and interaction | In Progress | Actual undirected pairs, readable labels, connected groups, zoom/pan/fit/keyboard, explicit total/matching/displayed |
+| Connected graph layout and interaction | Completed | Actual undirected pairs, readable labels, connected groups, zoom/pan/fit/keyboard, explicit total/matching/displayed |
 | Profile / security / preferences | Completed | Account-only API; real profile; password reset, signout, theme/sidebar |
-| Backend regressions / isolated migrations / correctness | In Progress | Two identities, uploads, persistence, queue/restart, independent synthetic metrics, UCI baseline |
-| Browser / responsive / accessibility / screenshots | In Progress | Nine routes at six widths; actual browser workflows and sanitized captures; distinguish fixture/live evidence |
-| Review / benchmarks / audits / documentation | In Progress | Repeat comparable measurements; production build; update README, architecture, deployment, final/improvement reports |
+| Backend regressions / isolated migrations / correctness | Completed | Two identities, uploads, persistence, queue/restart, independent synthetic metrics, UCI baseline |
+| Browser / responsive / accessibility / screenshots | Completed | Nine routes at six widths; actual browser workflows and sanitized captures; distinguish fixture/live evidence |
+| Review / benchmarks / audits / documentation | Completed | Repeat comparable measurements; production build; update README, architecture, deployment, final/improvement reports |
 | Live email round trip / second live verified account | Blocked | No inbox access or second account credentials available in this task; isolated identity tests continue |
 | Public deployment | Pending | Outside authorized scope; no publication performed |
 
@@ -57,6 +57,11 @@ Generated references contain inconsistent counts, thresholds, dates, unsupported
 
 
 Verification checkpoint: initial 39 backend / 35 frontend / 4 browser tests and build passed before edits. Expanded backend 48 passed; frontend 38 passed. Real PostgreSQL API + worker Playwright CSV and XLSX workflows plus invalid-file case: 3 passed. All nine pages/six widths and Account isolation passed; final accessibility repeat follows fixes for low-contrast rank text and route-action color interpolation. Migration 006 tested in isolated transaction and applied additively; existing UCI metadata and both 358/52/38 and 358/44/33 configurations verified. Local API interruption reproduced; detached loopback backend restarted and Vite same-origin proxy health/401 checked. No credentials, records, original artifacts, commits or publication changed.
+
+
+Final local verification: 53 backend tests; 43 frontend tests; 5 platform browser scenarios and 3 real upload/API/worker scenarios; production build, audits, compatibility and lint pass. Actual nine-page screenshots and README/report links exist. Migration 006 and a graceful restart preserve the stored-record fingerprint. Final numeric samples and tradeoffs are in docs/verification/redesign-measurements.json and docs/improvement-report.md. Owner-supplied concurrent compact header/help changes were preserved, with mobile overflow corrected. At this verification checkpoint, an external commit advanced HEAD and this agent had performed no commit/push/PR/deployment. See the subsequent PR handoff entry for the later owner request.
+
+External limitations remain Blocked/Pending as listed above: live second account/inbox and deployment storage/hosting/capacity/HTTPS checks. These are not certified by local fixtures. Catalog remains bounded to 100; cancellation/resumable transfers/stage telemetry are not implemented.
 
 ---
 
@@ -192,3 +197,9 @@ Central environment: Completed and verified locally. Root `.env` is the only act
 Contextual selection: Completed and verified. Overview retains inline recent history and its own metrics/status; the duplicated header selector/status strip appears only on Mining/Rules/Layout/Reports. Datasets uses its searchable catalog and Account has no analysis controls. Regression fails before and passes after; 35 frontend tests, configured build and all 4 offline Chromium workflows pass. Expanded screenshot evidence now includes profile, graph details, verification/resend, forgot/reset and mobile reports; all use an explicitly isolated test identity with actual exported dataset aggregates.
 
 Live verification completed: all 3 authenticated theme/responsive/zoom browser checks pass; the full mining/rules/graph/report/CSV/session/logout workflow passes separately (48.9 s) after the hourly submission window reopened. The rate-limit rejection was retained as evidence and was not bypassed. Live history selection explicitly chooses a completed authorized baseline run rather than assuming the newest run uses baseline thresholds. Final test totals: 39 backend, 35 frontend, 4 offline browser and 4 live browser checks passed. npm audit/pip-audit report zero known advisories; pip check, root-scoped correctness/import lint and production build pass. Remaining work: finalize illustrated documentation and reconcile all verified follow-ups into a reviewable main integration PR; external email-redirect/reset/second-account/CI/hosting checks remain separately blocked/pending.
+
+### Pull request handoff — 2026-11-27
+
+Completed: PR preparation, including repeated 43 frontend tests, five platform browser scenarios and production build after the latest owner sidebar adjustment. The owner requested publication of the final QA fixes, regression tests, sanitized screenshots and measurement report on the isolated QA branch, followed by a PR against `main`. Earlier no-publication statements describe the implementation checkpoint before this request. The actual publication result is recorded in GitHub. No merge or public deployment is authorized.
+
+The concurrent owner follow-up commits were merged separately in PR #35. Final QA publication uses `fix/retailatlas-final-qa` based on that updated `main`; the original working tree and its stash remain intact.

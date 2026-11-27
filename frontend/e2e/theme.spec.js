@@ -36,15 +36,16 @@ test("light and dark themes persist and all screens pass automated accessibility
         })),
       ).toEqual([]);
       if (name === "Overview") {
-        await expect(page.locator(".connection-card")).toHaveCount(3);
+        await expect(page.locator(".top-connections > div")).toHaveCount(3);
         await page.screenshot({
           path: `test-results/dashboard-${theme}.png`,
           fullPage: true,
           animations: "disabled",
         });
       }
-      if (name === "Product Layout") {
-        await page.getByLabel("Inspect relationship").selectOption("1");
+      if (name === "Product Relationship Map") {
+        await page.locator(".graph-edge-group").first().focus();
+        await page.keyboard.press("Space");
         await expect(page.getByText(/Co-purchased in/)).toBeVisible();
         const edge = page.getByRole("button", {
           name: "GREEN REGENCY TEACUP AND SAUCER with PINK REGENCY TEACUP AND SAUCER",
@@ -68,7 +69,7 @@ test("light and dark themes persist and all screens pass automated accessibility
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 });
-test("320px layouts, mobile navigation and reduced motion preserve all six screens", async ({
+test("320px layouts, mobile navigation and reduced motion preserve all nine screens", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -104,7 +105,7 @@ test("text zoom keeps desktop controls reachable", async ({ page }) => {
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
   await noOverflow(page);
-  await selectPage(page, "Mining");
+  await selectPage(page, "Mining Configuration");
   await expect(
     page.getByLabel("Minimum support", { exact: true }),
   ).toBeVisible();
