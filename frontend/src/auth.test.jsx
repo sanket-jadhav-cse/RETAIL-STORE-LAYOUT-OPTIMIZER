@@ -99,11 +99,9 @@ it("expired password reset gives a recoverable error", async () => {
 
 it("restores a session and remounts private state on account switching and logout", async () => {
   let change;
-  mocks.getSession = vi
-    .fn()
-    .mockResolvedValue({
-      data: { session: { user: { id: "account-a", email: "a@example.test" } } },
-    });
+  mocks.getSession = vi.fn().mockResolvedValue({
+    data: { session: { user: { id: "account-a", email: "a@example.test" } } },
+  });
   mocks.onAuthStateChange = vi.fn((callback) => {
     change = callback;
     return { data: { subscription: { unsubscribe: vi.fn() } } };
@@ -114,12 +112,14 @@ it("restores a session and remounts private state on account switching and logou
     const [value, setValue] = useState("empty");
     return <button onClick={() => setValue("private-a")}>{value}</button>;
   }
+  localStorage.setItem("retailRun", "legacy-selection");
   render(
     <AuthProvider>
       <PrivateState />
     </AuthProvider>,
   );
   fireEvent.click(await screen.findByRole("button", { name: "empty" }));
+  expect(localStorage.getItem("retailRun")).toBeNull();
   expect(screen.getByText("private-a")).toBeInTheDocument();
   act(() =>
     change("SIGNED_IN", { user: { id: "account-b", email: "b@example.test" } }),

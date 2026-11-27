@@ -29,6 +29,7 @@ const dataset = {
 };
 beforeEach(() => {
   window.localStorage.clear();
+  history.replaceState(null, "", "/");
   dataset.latest_run_id = null;
   api.get.mockReset();
   api.post.mockReset();
@@ -446,4 +447,136 @@ it("collapses the desktop sidebar and restores its preference", async () => {
   expect(
     screen.getByRole("button", { name: "Expand sidebar" }),
   ).toHaveAttribute("aria-expanded", "false");
+});
+
+it("resets server pagination atomically when a debounced filter changes", async () => {
+  dataset.latest_run_id = RUN_ID;
+  const rule = {
+    rule_id: "1",
+    antecedent: ["A"],
+    consequent: ["B"],
+    antecedent_names: ["Apples"],
+    consequent_names: ["Bread"],
+    support: 0.2,
+    confidence: 0.5,
+    lift: 1.5,
+  };
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path.endsWith("/rules")
+            ? { items: [rule], total: 51 }
+            : path.endsWith("/adjacencies")
+              ? { items: [], total: 0 }
+              : {
+                  run_id: RUN_ID,
+                  dataset_id: "d1",
+                  status: "Completed",
+                  execution: {},
+                },
+    }),
+  );
+  render(<App />);
+  await screen.findByText("Selected analysis");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
+  );
+  await screen.findByText("Apples");
+  fireEvent.click(screen.getByRole("button", { name: "Next", exact: true }));
+  await waitFor(() =>
+    expect(api.get).toHaveBeenCalledWith(
+      expect.stringMatching(/\/rules$/),
+      expect.objectContaining({ params: expect.objectContaining({ page: 2 }) }),
+    ),
+  );
+  fireEvent.change(screen.getByLabelText("Search products"), {
+    target: { value: "Bread" },
+  });
+  await waitFor(() =>
+    expect(api.get).toHaveBeenCalledWith(
+      expect.stringMatching(/\/rules$/),
+      expect.objectContaining({
+        params: expect.objectContaining({ page: 1, search: "Bread" }),
+      }),
+    ),
+  );
+  expect(
+    api.get.mock.calls.filter(
+      ([path, options]) =>
+        path.endsWith("/rules") && options?.params?.search === "Bread",
+    ),
+  ).toHaveLength(1);
+});
+it("stops active mining polling when leaving the monitoring screens", async () => {
+  dataset.latest_run_id = RUN_ID;
+  api.get.mockImplementation((path) =>
+    Promise.resolve({
+      data:
+        path === "/datasets"
+          ? [dataset]
+          : path === "/runs"
+            ? { items: [], total: 0 }
+            : {
+                run_id: RUN_ID,
+                dataset_id: "d1",
+                status: "Running",
+                execution: {},
+              },
+    }),
+  );
+  render(<App />);
+  await screen.findByText("Selected analysis");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Datasets", exact: true }),
+  );
+  await new Promise((resolve) => setTimeout(resolve, 1700));
+  expect(
+    api.get.mock.calls.filter(([path]) => path === `/runs/${RUN_ID}`),
+  ).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Mining", exact: true }));
+  await waitFor(() =>
+    expect(
+      api.get.mock.calls.filter(([path]) => path === `/runs/${RUN_ID}`),
+    ).toHaveLength(2),
+  );
+});
+
+it("clears an interrupted result loading state when navigating away", async () => {
+  dataset.latest_run_id = RUN_ID;
+  api.get.mockImplementation((path) =>
+    path.endsWith("/rules")
+      ? new Promise(() => {})
+      : Promise.resolve({
+          data:
+            path === "/datasets"
+              ? [dataset]
+              : path === "/runs"
+                ? { items: [], total: 0 }
+                : path.endsWith("/adjacencies")
+                  ? { items: [], total: 0 }
+                  : {
+                      run_id: RUN_ID,
+                      dataset_id: "d1",
+                      status: "Completed",
+                      execution: {},
+                    },
+        }),
+  );
+  render(<App />);
+  await screen.findByText("Selected analysis");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Association Rules", exact: true }),
+  );
+  await screen.findByText("Loading data…");
+  fireEvent.click(
+    screen.getByRole("button", { name: "Datasets", exact: true }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByText("Loading data…")).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+    "Datasets",
+  );
 });

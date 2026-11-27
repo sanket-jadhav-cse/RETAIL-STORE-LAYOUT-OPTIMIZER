@@ -28,6 +28,11 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState("");
   const scope = useRef({ id: null, controller: new AbortController() });
   useEffect(() => {
+    try {
+      localStorage.removeItem("retailRun");
+    } catch {
+      /* Optional browser storage. */
+    }
     if (!supabase) {
       setReady(true);
       return;

@@ -9,6 +9,10 @@ engine = create_engine(
         drivername="postgresql+psycopg"
     ),
     hide_parameters=True,
+    connect_args={
+        "connect_timeout": 10,
+        "options": "-c lock_timeout=5000 -c statement_timeout=60000",
+    },
 )
 
 if context.is_offline_mode():

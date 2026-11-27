@@ -155,10 +155,14 @@ async function setup(page, { signedIn = true } = {}) {
 }
 async function navigate(page, name) {
   const button = page.getByRole("button", { name, exact: true });
-  if (!(await button.isVisible()))
-    await page
-      .getByRole("button", { name: "Open navigation", exact: true })
-      .click();
+  if (page.viewportSize().width < 960) {
+    const trigger = page.getByRole("button", {
+      name: "Open navigation",
+      exact: true,
+    });
+    await expect(trigger).toBeVisible();
+    if (!(await button.isVisible())) await trigger.click();
+  }
   await button.click();
   await expect(page.getByText("Loading data…", { exact: true })).toHaveCount(0);
 }
@@ -190,6 +194,13 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
   await page.goto("/");
   await expect(page.getByText("20,728", { exact: true })).toBeVisible();
   await expect(page.getByText("358", { exact: true })).toBeVisible();
+  await navigate(page, "Datasets");
+  await navigate(page, "Mining");
+  await page.goBack();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Datasets");
+  await page.goForward();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mining");
+  await navigate(page, "Overview");
   for (const theme of ["dark", "light"]) {
     if ((await page.locator("html").getAttribute("data-theme")) !== theme)
       await page
