@@ -238,6 +238,10 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
     page.getByRole("button", { name: "Expand sidebar" }),
   ).toBeVisible();
   await noOverflow(page);
+  await expect(
+    page.getByRole("button", { name: "Load a previous run" }),
+  ).toHaveCount(0);
+  await navigate(page, "Mining");
   await page.getByRole("button", { name: "Load a previous run" }).click();
   const dialog = page.getByRole("dialog", { name: "Load a previous run" });
   await expect(
@@ -271,6 +275,14 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
   await expect(
     page.getByRole("heading", { name: "Account information" }),
   ).toBeVisible();
+  await expect(page.getByLabel("Display name")).toHaveValue(
+    "Isolated test account",
+  );
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/account-profile.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Send password reset" }).click();
   await expect(
     page.getByText(/reset instructions will arrive shortly/),
@@ -282,6 +294,11 @@ test("offline aggregate fixture: six screens, accessible dark/light, sidebar, hi
     })
     .click();
   await expect(page.getByText(/Co-purchased in/)).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/graph-detail.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "Reset view" }).click();
   await page
     .getByRole("spinbutton", { name: "Minimum confidence", exact: true })
@@ -382,9 +399,19 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(
     page.getByRole("heading", { name: "Verify your email" }),
   ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/email-verification.png",
+    fullPage: true,
+  });
   await page
     .getByRole("button", { name: "Forgot password", exact: true })
     .click();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/forgot-password.png",
+    fullPage: true,
+  });
   await page.getByLabel("Email address").fill("planner@example.invalid");
   await page
     .getByRole("button", { name: "Forgot password", exact: true })
@@ -402,6 +429,43 @@ test("offline Auth service: protected entry, signup, recovery, login and logout"
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+  await page.goto(
+    "/#error=access_denied&error_code=otp_expired&error_description=untrusted-text",
+  );
+  // Open the callback as a fresh document, as with an external email link.
+  await page.reload();
+  await expect(
+    page.getByText(/This email link is invalid or has expired/),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Resend verification", exact: true })
+    .click();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/resend-verification.png",
+    fullPage: true,
+  });
+  await page.addInitScript(
+    (value) =>
+      localStorage.setItem("sb-retail-test-auth-token", JSON.stringify(value)),
+    session(),
+  );
+  await page.goto("/reset-password");
+  await expect(
+    page.getByRole("heading", { name: "Reset password", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: "test-results/improvements/after/reset-password.png",
+    fullPage: true,
+  });
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill("offline-new-password");
+  await page
+    .getByRole("button", { name: "Reset password", exact: true })
+    .click();
+  await expect(page.getByText("358", { exact: true })).toBeVisible();
 });
 
 test("table wheel scrolling reaches the page and retains horizontal access", async ({
