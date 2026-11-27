@@ -3532,3 +3532,27 @@ th {
   .page-header > .button { margin-left: auto; }
   .topbar-actions .breadcrumb > span { display: inline; }
 }
+/* Keep compact contextual navigation inside the mobile header. */
+.topbar-actions { min-width: 0; }
+.topbar-actions .breadcrumb { min-width: 0; flex-shrink: 1; }
+.topbar-actions .breadcrumb strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 767px) {
+  .topbar-actions .breadcrumb > span { display: none; }
+  .topbar-actions { gap: 10px; }
+}
+/* One horizontal workspace header for context, actions, and controls. */
+.topbar { min-height: 76px; height: auto; padding-block: 10px; gap: 20px; }
+.topbar-page { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.topbar-page h1 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-page h1:focus { outline: none; }
+.topbar-actions { flex: 0 0 auto; gap: 10px; }
+.topbar-actions > .button { white-space: nowrap; }
+.main-content { padding-top: 20px; }
+@media (max-width: 767px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; padding-block: 9px; }
+  .topbar-page { flex: 1 1 150px; }
+  .topbar-page h1 { font-size: 16px; }
+  .topbar-actions { margin-left: auto; }
+  .topbar-actions > .button { font-size: 12px; padding-inline: 9px; }
+  .topbar-page .breadcrumb > span { display: none; }
+}
